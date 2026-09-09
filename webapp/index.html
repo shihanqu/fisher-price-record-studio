@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%233aa06a'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%232e8a57' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='14' fill='none' stroke='%232e8a57' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23f4f1ea'/%3E%3C/svg%3E">
+<title>Fisher-Price Record Studio</title>
+<style>
+  :root { --bg:#f4f1ea; --panel:#fffdf8; --ink:#222; --muted:#6b6560; --line:#d9d2c5; --accent:#1d6fb8; --green:#3aa06a; --orange:#f28c28; }
+  * { box-sizing:border-box; }
+  html, body { background:var(--bg); color:var(--ink); }
+  body { margin:0; font:15px/1.5 -apple-system, system-ui, "Segoe UI", sans-serif; min-height:100vh; }
+  .wrap { max-width:1180px; margin:0 auto; padding:36px 24px 48px; }
+  .hero { display:flex; align-items:center; gap:18px; margin-bottom:26px; }
+  .logo { width:56px; height:56px; border-radius:50%; background:radial-gradient(circle at 50% 50%, #f4f1ea 0 9%, var(--green) 10% 22%, #2e8a57 23% 26%, var(--green) 27% 40%, #2e8a57 41% 44%, var(--green) 45% 58%, #2e8a57 59% 62%, var(--green) 63% 76%, #2e8a57 77% 80%, var(--green) 81% 100%); box-shadow:0 2px 6px rgba(0,0,0,.18); flex:none; }
+  h1 { font-size:30px; margin:0; letter-spacing:-.01em; }
+  .tag { color:var(--muted); margin:2px 0 0; font-size:15px; }
+  .apps { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:22px; }
+  a.app { display:flex; flex-direction:column; background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;
+          color:var(--ink); text-decoration:none; box-shadow:0 1px 2px rgba(0,0,0,.05); transition:transform .12s ease, box-shadow .12s ease; }
+  a.app:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.12); border-color:#c9c1b2; }
+  .shot { aspect-ratio:16/10; background:#e9e4d9; overflow:hidden; border-bottom:1px solid var(--line); }
+  .shot img { width:100%; height:100%; object-fit:cover; object-position:top left; display:block; }
+  .body { padding:18px 20px 20px; }
+  .body h2 { margin:0 0 4px; font-size:21px; }
+  .body .kicker { font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .body p { margin:0 0 10px; color:#3c3835; }
+  .body ul { margin:0 0 14px; padding-left:18px; color:#3c3835; font-size:14px; }
+  .body li { margin:2px 0; }
+  .cta { display:inline-block; padding:8px 14px; border-radius:8px; background:var(--accent); color:#fff; font-weight:600; font-size:14px; }
+  .flow { margin-top:30px; padding:16px 20px; background:var(--panel); border:1px solid var(--line); border-radius:12px; color:var(--muted); font-size:14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .flow b { color:var(--ink); font-weight:600; }
+  .flow .arrow { color:var(--orange); font-weight:700; }
+  footer { margin-top:26px; color:var(--muted); font-size:13px; }
+  footer code { background:#ece7dc; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="logo"></div>
+    <div>
+      <h1>Fisher-Price Record Studio</h1>
+      <p class="tag">Read the tune off a 1971 Music Box Record Player disc, or design and 3D-print a new one.</p>
+    </div>
+  </div>
+
+  <div class="apps">
+    <a class="app" href="/scanner">
+      <div class="shot"><img src="/static/scanner.png" alt="Note Scanner screenshot: a straightened record with every pin circled, and the notes listed"></div>
+      <div class="body">
+        <div class="kicker">Photo &rarr; notes</div>
+        <h2>Note Scanner</h2>
+        <p>Drop in a photo of a record. The scanner straightens it, finds every pin on the 22 tracks and turns them back into music.</p>
+        <ul>
+          <li>Works from any angle; hides hands and the tone arm from the result</li>
+          <li>Plays the tune while sweeping the arm over your photo</li>
+          <li>Exports JSON, MIDI and WAV, or hands the score to the designer</li>
+        </ul>
+        <span class="cta">Open the scanner</span>
+      </div>
+    </a>
+    <a class="app" href="/designer">
+      <div class="shot"><img src="/static/designer.png" alt="Record Designer screenshot: a piano roll on the left and a 3D preview of the printed record on the right"></div>
+      <div class="body">
+        <div class="kicker">Loop &rarr; printable record</div>
+        <h2>Record Designer</h2>
+        <p>Draw a loop on the piano roll or import a MIDI file. It becomes pins on a real record you can preview in 3D and print.</p>
+        <ul>
+          <li>Only the 16 pitches the player has, with the doubled tines handled for you</li>
+          <li>Preview is the exact mesh you download</li>
+          <li>One click to an STL with your title embossed on the label</li>
+        </ul>
+        <span class="cta">Open the designer</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="flow">
+    <b>Typical flow</b> <span>photograph a record</span> <span class="arrow">&rarr;</span> <span>scan it</span> <span class="arrow">&rarr;</span>
+    <span>open in the designer</span> <span class="arrow">&rarr;</span> <span>edit or reprint</span> <span class="arrow">&rarr;</span> <span>download STL</span>
+  </div>
+  <footer>Everything runs locally. The command-line versions are <code>extract_record.py</code> and <code>design_disc.py</code>; see the README.</footer>
+</div>
+</body>
+</html>

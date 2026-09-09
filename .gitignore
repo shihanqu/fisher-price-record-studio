@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
+# large / derived
+data/*.mp4
+output/*
+!output/edelweiss.json
+!output/edelweiss.mid
+!output/edelweiss_reprint.stl
+!output/edelweiss_reprint_render.png
+!output/edelweiss_debug/
+output/edelweiss_debug/*
+!output/edelweiss_debug/02_rectified_pins.jpg

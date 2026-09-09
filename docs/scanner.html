@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%233aa06a'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%232e8a57' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='14' fill='none' stroke='%232e8a57' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23f4f1ea'/%3E%3C/svg%3E">
+<title>Record Studio · Scanner</title>
+<style>
+  :root { --bg:#f4f1ea; --panel:#fffdf8; --ink:#222; --muted:#6b6560; --line:#d9d2c5; --accent:#1d6fb8; --bad:#c0392b; --green:#3aa06a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
+  header { display:flex; align-items:baseline; gap:14px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header h1 { font-size:17px; margin:0; }
+  header .sub { color:var(--muted); font-size:12px; }
+  header .home { color:var(--muted); text-decoration:none; font-size:12px; letter-spacing:.06em; text-transform:uppercase; padding-right:14px; border-right:1px solid var(--line); }
+  header .home:hover { color:var(--accent); }
+  header .other { margin-left:auto; color:var(--accent); font-size:13px; }
+  .banner { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:8px 16px; font-size:13px; }
+  main { display:grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr); gap:12px; padding:12px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:0 0 8px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; margin:6px 0; }
+  label { font-size:12.5px; color:var(--muted); display:inline-flex; gap:6px; align-items:center; }
+  input[type=number], input[type=text] { font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:5px; width:80px; background:#fff; }
+  input[type=text] { width:160px; }
+  button { font:inherit; padding:5px 11px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
+  button:hover { border-color:#aaa; }
+  button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  #drop { border:2px dashed var(--line); border-radius:8px; padding:26px; text-align:center; color:var(--muted); cursor:pointer; background:#fff; }
+  #drop.over { border-color:var(--accent); color:var(--accent); }
+  #overlay-wrap { position:relative; width:100%; background:#fff; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  #overlay { display:block; width:100%; height:auto; }
+  #sweep { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+  #roll-wrap { overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fff; max-height:480px; }
+  canvas#roll { display:block; }
+  #status { font-size:12.5px; white-space:pre-wrap; color:var(--muted); min-height:1.4em; }
+  #status.bad { color:var(--bad); }
+  table { border-collapse:collapse; font-size:12px; width:100%; }
+  td, th { padding:2px 6px; border-bottom:1px solid #eee; text-align:left; }
+  #notes-wrap { max-height:260px; overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .stack { display:flex; flex-direction:column; gap:12px; }
+  .hint { color:var(--muted); font-size:12px; }
+  .stats { display:flex; gap:18px; flex-wrap:wrap; }
+  .stats div { font-size:12.5px; color:var(--muted); }
+  .stats b { display:block; font-size:18px; color:var(--ink); }
+</style>
+</head>
+<body>
+<header>
+  <a class="home" href="./index.html">Fisher-Price Record Studio</a>
+  <h1>Note Scanner</h1>
+  <span class="sub">photo of a record &rarr; pins &rarr; notes &rarr; play / export</span>
+  <a class="other" href="./designer.html">Record designer &rarr;</a>
+</header>
+<div id="static-banner" class="banner" hidden>Hosted demo: this page runs without the Python server, so it can show the built-in sample only. Photo scanning, STL export and MIDI/WAV downloads need the studio running locally (see the README).</div>
+<main>
+  <div class="stack">
+    <div class="card">
+      <h2>Photo</h2>
+      <div id="drop">Drop a photo of a record here, or click to choose one.<br><span class="hint">Any angle is fine as long as the whole grooved side is visible. 8-12 MP photos work best.</span></div>
+      <input type="file" id="file" accept="image/*" hidden>
+      <div class="row"><button id="sample">Try the sample photo (Edelweiss)</button></div>
+      <div class="row">
+        <label>Title <input type="text" id="title" placeholder="from file name"></label>
+        <label>Quantise to <input type="number" id="pq" value="0" min="0" max="400" step="4"> beats/rev (0 = raw)</label>
+        <label>Seconds / rev <input type="number" id="spr" value="45" min="10" max="120" step="1"></label>
+        <label>Threshold <input type="number" id="ms" value="0.5" min="0.2" max="1" step="0.05"></label>
+        <button class="primary" id="rescan" disabled>Re-scan</button>
+      </div>
+      <div id="status">Waiting for a photo.</div>
+    </div>
+    <div class="card">
+      <h2>Detected pins</h2>
+      <div id="overlay-wrap"><img id="overlay" alt=""><canvas id="sweep"></canvas></div>
+      <div class="hint">Green circles are detected pins on the straightened disc. Inner tracks are low notes. While playing, the white line shows the tone arm's position on the record.</div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="card">
+      <h2>Result</h2>
+      <div class="stats">
+        <div><b id="s-pins">–</b>pins</div>
+        <div><b id="s-notes">–</b>distinct pitches</div>
+        <div><b id="s-cov">–</b>disc visible</div>
+        <div><b id="s-fit">–</b>groove fit</div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="play" disabled>&#9654; Play</button>
+        <button id="stop">&#9632; Stop</button>
+        <label><input type="checkbox" id="loopplay" checked> loop</label>
+        <button id="dljson" disabled>&#8595; JSON</button>
+        <button id="dlmidi" disabled>&#8595; MIDI</button>
+        <button id="dlwav" disabled>&#8595; WAV</button>
+        <button id="todesigner" disabled>Open in designer &rarr;</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Notes over one revolution</h2>
+      <div id="roll-wrap"><canvas id="roll"></canvas></div>
+      <div class="hint">Time runs left to right for one turn of the record. Height is pitch; the 16 rows are the tines the player has.</div>
+    </div>
+    <div class="card">
+      <h2>Note list</h2>
+      <div id="notes-wrap"><table id="notes"><thead><tr><th>#</th><th>beat</th><th>seconds</th><th>note</th><th>track</th><th>strength</th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+</main>
+
+<script src="./static-api.js"></script>
+<script type="module">
+const api = (path, opts) => (window.STATIC_API ? window.STATIC_API(path, opts) : fetch(path, opts));
+if (window.STATIC_API) document.getElementById('static-banner').hidden = false;
+const GEO_P = api('/api/geometry').then(r => r.json());
+const $ = id => document.getElementById(id);
+let GEO, score = null, raw = null, lastFile = null, overlayInfo = null;
+
+// ---------------------------------------------------------------- upload
+const drop = $('drop'), file = $('file');
+drop.onclick = () => file.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); if (e.dataTransfer.files[0]) scan(e.dataTransfer.files[0]); };
+file.onchange = () => { if (file.files[0]) scan(file.files[0]); };
+$('rescan').onclick = () => lastFile && scan(lastFile);
+$('sample').onclick = async () => { const b = await (await api('/sample/edelweiss_record.jpg')).blob(); scan(new File([b], 'edelweiss_record.jpg', { type: 'image/jpeg' })); };
+
+function status(t, bad) { $('status').textContent = t; $('status').className = bad ? 'bad' : ''; }
+
+async function scan(f) {
+  lastFile = f; GEO = await GEO_P;
+  status(`scanning ${f.name} (${(f.size / 1e6).toFixed(1)} MB)…`);
+  $('rescan').disabled = true;
+  try {
+    const r = await api('/api/extract', { method: 'POST', body: await f.arrayBuffer(), headers: {
+      'X-Filename': f.name, 'X-Quantise': $('pq').value, 'X-Min-Strength': $('ms').value, 'X-Seconds-Per-Rev': $('spr').value } });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    score = d.score; raw = d.raw_score;
+    if ($('title').value) score.title = $('title').value; else $('title').value = score.title;
+    $('overlay').src = 'data:image/jpeg;base64,' + d.overlay_jpeg_b64;
+    overlayInfo = { pxPerMm: d.overlay_px_per_mm, startAngle: (score.meta && score.meta.start_angle_deg) || 0 };
+    $('s-pins').textContent = d.n_pins;
+    $('s-notes').textContent = new Set(score.notes.map(n => n.midi)).size;
+    $('s-cov').textContent = Math.round(100 * (score.meta.visible_fraction ?? 1)) + '%';
+    $('s-fit').textContent = `${d.groove_fit.global_offset_mm >= 0 ? '+' : ''}${d.groove_fit.global_offset_mm.toFixed(2)} mm`;
+    status(`${d.n_pins} pins found` + (d.warnings.length ? '\n' + d.warnings.join('\n') : ''), d.warnings.length > 0);
+    for (const id of ['play', 'dljson', 'dlmidi', 'dlwav', 'todesigner']) $(id).disabled = false;
+    drawRoll(); fillTable();
+  } catch (e) { status('Error: ' + e.message, true); }
+  $('rescan').disabled = false;
+}
+
+// ---------------------------------------------------------------- roll
+const roll = $('roll'), rctx = roll.getContext('2d');
+let playhead = -1;   // beat
+function drawRoll() {
+  if (!score) return;
+  const P = GEO.pitch_set.slice().reverse();
+  const W = Math.max(900, roll.parentElement.clientWidth - 2), LEFT = 46, TOP = 8, RH = 18, H = TOP + P.length * RH + 24;
+  roll.width = W; roll.height = H;
+  rctx.fillStyle = '#fff'; rctx.fillRect(0, 0, W, H);
+  const span = W - LEFT - 8, L = score.length_beats;
+  P.forEach((m, r) => {
+    const y = TOP + r * RH;
+    rctx.fillStyle = (m % 12 === 8) ? '#f3efe4' : '#fff'; rctx.fillRect(LEFT, y, span, RH);
+    rctx.fillStyle = '#444'; rctx.font = '11px system-ui'; rctx.textAlign = 'right'; rctx.fillText(GEO.names[m], LEFT - 5, y + 13);
+  });
+  rctx.strokeStyle = '#e6e0d4';
+  for (let r = 0; r <= P.length; r++) { const y = TOP + r * RH; rctx.beginPath(); rctx.moveTo(LEFT, y); rctx.lineTo(LEFT + span, y); rctx.stroke(); }
+  // time ticks every 5 s
+  const spr = +$('spr').value;
+  rctx.fillStyle = '#888'; rctx.textAlign = 'left';
+  for (let s = 0; s < spr; s += 5) {
+    const x = LEFT + span * s / spr; rctx.strokeStyle = '#d9d2c5'; rctx.beginPath(); rctx.moveTo(x, TOP); rctx.lineTo(x, TOP + P.length * RH); rctx.stroke();
+    rctx.fillText(s + ' s', x + 2, TOP + P.length * RH + 14);
+  }
+  for (const n of score.notes) {
+    const r = P.indexOf(n.midi); if (r < 0) continue;
+    const x = LEFT + span * n.beat / L, y = TOP + r * RH;
+    rctx.fillStyle = '#3aa06a'; rctx.beginPath(); rctx.roundRect(x - 3, y + 3, 7, RH - 6, 2); rctx.fill();
+  }
+  if (playhead >= 0) { const x = LEFT + span * playhead / L; rctx.strokeStyle = '#f28c28'; rctx.lineWidth = 2; rctx.beginPath(); rctx.moveTo(x, TOP); rctx.lineTo(x, TOP + P.length * RH); rctx.stroke(); rctx.lineWidth = 1; }
+}
+function fillTable() {
+  const tb = $('notes').querySelector('tbody'); tb.innerHTML = '';
+  const spb = +$('spr').value / score.length_beats;
+  score.notes.forEach((n, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i + 1}</td><td>${n.beat.toFixed(2)}</td><td>${(n.beat * spb).toFixed(2)}</td><td>${GEO.names[n.midi] || n.midi}</td><td>${n.track ?? ''}</td><td>${(n.velocity ?? 1).toFixed(2)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+// sweep line over the overlay image: the arm sits at the angle currently playing
+const sweep = $('sweep'), sctx = sweep.getContext('2d');
+function drawSweep() {
+  const img = $('overlay'); if (!img.naturalWidth || !overlayInfo) return;
+  sweep.width = img.clientWidth; sweep.height = img.clientHeight;
+  sctx.clearRect(0, 0, sweep.width, sweep.height);
+  if (playhead < 0) return;
+  const k = sweep.width / img.naturalWidth * overlayInfo.pxPerMm;
+  const c = sweep.width / 2;
+  // note at beat b sits at angle start + 360*b/L ; the arm reads it, so the arm is there now
+  const a = (overlayInfo.startAngle + 360 * playhead / score.length_beats) * Math.PI / 180;
+  sctx.strokeStyle = 'rgba(255,255,255,.9)'; sctx.lineWidth = 2;
+  sctx.beginPath(); sctx.moveTo(c + 26 * k * Math.cos(a), c - 26 * k * Math.sin(a)); sctx.lineTo(c + 61 * k * Math.cos(a), c - 61 * k * Math.sin(a)); sctx.stroke();
+}
+
+// ---------------------------------------------------------------- audio
+let actx = null, timer = null;
+function ensureAudio() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); }
+function pluck(midi, when, gain) {
+  const f = 440 * Math.pow(2, (midi - 69) / 12);
+  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(gain, when + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, when + 1.6); g.connect(actx.destination);
+  for (const [ratio, amp, dec] of [[1, 1, 1.5], [6.27, 0.12, 6], [17.55, 0.03, 12]]) {
+    const o = actx.createOscillator(); o.frequency.value = f * ratio;
+    const og = actx.createGain(); og.gain.setValueAtTime(amp, when); og.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 / dec * 1.5);
+    o.connect(og); og.connect(g); o.start(when); o.stop(when + 2);
+  }
+}
+function play() {
+  stop(); if (!score) return; ensureAudio();
+  const spr = +$('spr').value, L = score.length_beats, spb = spr / L;
+  const t0 = actx.currentTime + 0.05;
+  const sched = k => score.notes.forEach(n => pluck(n.midi, t0 + (k * L + n.beat) * spb, 0.22 * Math.min(1, n.velocity ?? 1)));
+  sched(0); let k = 0; const started = performance.now();
+  timer = setInterval(() => {
+    const beat = (performance.now() - started) / 1000 / spb;
+    if (beat >= (k + 1) * L) { if (!$('loopplay').checked) { stop(); return; } k++; sched(k); }
+    playhead = beat % L; drawRoll(); drawSweep();
+  }, 30);
+}
+function stop() { if (timer) clearInterval(timer); timer = null; playhead = -1; drawRoll(); drawSweep(); }
+$('play').onclick = play; $('stop').onclick = stop;
+
+// ---------------------------------------------------------------- export
+function saveBlob(b, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+const fname = ext => (($('title').value || 'record').replace(/\s+/g, '_')) + ext;
+const outScore = () => ({ ...score, title: $('title').value || score.title, seconds_per_rev: +$('spr').value });
+$('dljson').onclick = () => saveBlob(new Blob([JSON.stringify(outScore(), null, 1)], { type: 'application/json' }), fname('.json'));
+$('dlmidi').onclick = async () => { const r = await api('/api/midi', { method: 'POST', body: JSON.stringify({ score: outScore(), seconds_per_rev: +$('spr').value }) }); saveBlob(await r.blob(), fname('.mid')); };
+$('dlwav').onclick = async () => { const r = await api('/api/wav', { method: 'POST', body: JSON.stringify({ score: outScore(), assign: false, loops: 1, seconds_per_rev: +$('spr').value }) }); saveBlob(await r.blob(), fname('.wav')); };
+$('todesigner').onclick = () => { localStorage.setItem('fpmb.handoff', JSON.stringify(outScore())); window.open('./designer.html', '_blank'); };
+$('spr').onchange = () => { drawRoll(); fillTable(); };
+new ResizeObserver(() => { drawRoll(); drawSweep(); }).observe(document.body);
+// demo mode (used for the home-page screenshots): scan the sample before the page reports 'loaded'
+if (new URLSearchParams(location.search).has('demo')) { const b = await (await api('/sample/edelweiss_record.jpg')).blob(); await scan(new File([b], 'edelweiss_record.jpg', { type: 'image/jpeg' })); await new Promise(r => setTimeout(r, 400)); }
+window.__demoDone = true;
+</script>
+</body>
+</html>
