@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%233aa06a'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%232e8a57' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='14' fill='none' stroke='%232e8a57' stroke-width='3'/%3E%3Ccircle cx='32' cy='32' r='4' fill='%23f4f1ea'/%3E%3C/svg%3E">
-<title>Fisher-Price Record Studio</title>
+<title>Fisher-Price Record Studio (static demo)</title>
 <style>
   :root { --bg:#f4f1ea; --panel:#fffdf8; --ink:#222; --muted:#6b6560; --line:#d9d2c5; --accent:#1d6fb8; --green:#3aa06a; --orange:#f28c28; }
   * { box-sizing:border-box; }
@@ -33,14 +33,18 @@
   .flow .arrow { color:var(--orange); font-weight:700; }
   footer { margin-top:26px; color:var(--muted); font-size:13px; }
   footer code { background:#ece7dc; padding:1px 5px; border-radius:4px; }
+  .topbar { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:10px 24px; font-size:14px; text-align:center; }
+  .topbar a { color:#1d6fb8; } .topbar code { background:#fbe7b8; padding:1px 5px; border-radius:4px; }
+  .badge { display:inline-block; vertical-align:middle; background:#f28c28; color:#fff; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:4px 10px; border-radius:999px; margin-left:10px; }
 </style>
 </head>
 <body>
+<div class="topbar"><b>Static demo.</b> This site has no server behind it: it shows the sample scan and lets you try the designer, but scanning your own photo and exporting STL need the studio running locally. Clone <a href="https://github.com/shihanqu/fisher-price-record-studio">the repo</a> and run <code>python webapp/server.py</code>.</div>
 <div class="wrap">
   <div class="hero">
     <div class="logo"></div>
     <div>
-      <h1>Fisher-Price Record Studio</h1>
+      <h1>Fisher-Price Record Studio <span class="badge">Static demo</span></h1>
       <p class="tag">Read the tune off a 1971 Music Box Record Player disc, or design and 3D-print a new one.</p>
     </div>
   </div>
@@ -76,9 +80,6 @@
     </a>
   </div>
 
-  <div class="flow" style="background:#fff3d6;border-color:#f0d9a0;color:#6b4b00">
-    <b>This is the hosted demo.</b> <span>It shows the sample scan and lets you play with the designer, but scanning your own photo and exporting STL need the Python server: clone the repo and run <code>python webapp/server.py</code>.</span>
-  </div>
   <div class="flow">
     <b>Typical flow</b> <span>photograph a record</span> <span class="arrow">&rarr;</span> <span>scan it</span> <span class="arrow">&rarr;</span>
     <span>open in the designer</span> <span class="arrow">&rarr;</span> <span>edit or reprint</span> <span class="arrow">&rarr;</span> <span>download STL</span>

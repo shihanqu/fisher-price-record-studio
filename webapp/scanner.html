@@ -16,6 +16,8 @@
   header .home:hover { color:var(--accent); }
   header .other { margin-left:auto; color:var(--accent); font-size:13px; }
   .banner { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:8px 16px; font-size:13px; }
+  .banner code { background:#fbe7b8; padding:1px 4px; border-radius:3px; }
+  .badge { background:#f28c28; color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
   main { display:grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr); gap:12px; padding:12px; }
   @media (max-width:900px) { main { grid-template-columns:1fr; } }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
@@ -52,9 +54,10 @@
   <a class="home" href="/">Fisher-Price Record Studio</a>
   <h1>Note Scanner</h1>
   <span class="sub">photo of a record &rarr; pins &rarr; notes &rarr; play / export</span>
+  <span id="static-badge" class="badge" hidden>Static demo</span>
   <a class="other" href="/designer">Record designer &rarr;</a>
 </header>
-<div id="static-banner" class="banner" hidden>Hosted demo: this page runs without the Python server, so it can show the built-in sample only. Photo scanning, STL export and MIDI/WAV downloads need the studio running locally (see the README).</div>
+<div id="static-banner" class="banner" hidden><b>Static demo.</b> This copy runs without the Python server, so it can only show the built-in sample. Scanning your own photo, exporting STL, and MIDI/WAV downloads need the studio running locally: clone the repo and run <code>python webapp/server.py</code>.</div>
 <main>
   <div class="stack">
     <div class="card">
@@ -111,7 +114,7 @@
 
 <script type="module">
 const api = (path, opts) => (window.STATIC_API ? window.STATIC_API(path, opts) : fetch(path, opts));
-if (window.STATIC_API) document.getElementById('static-banner').hidden = false;
+if (window.STATIC_API) { document.getElementById('static-banner').hidden = false; document.getElementById('static-badge').hidden = false; document.title += ' (static demo)'; }
 const GEO_P = api('/api/geometry').then(r => r.json());
 const $ = id => document.getElementById(id);
 let GEO, score = null, raw = null, lastFile = null, overlayInfo = null;

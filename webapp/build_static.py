@@ -44,10 +44,14 @@ def main():
     idx = open(os.path.join(HERE, "index.html")).read()
     for a, b in REWRITES:
         idx = idx.replace(a, b)
-    idx = idx.replace('<div class="flow">', '''<div class="flow" style="background:#fff3d6;border-color:#f0d9a0;color:#6b4b00">
-    <b>This is the hosted demo.</b> <span>It shows the sample scan and lets you play with the designer, but scanning your own photo and exporting STL need the Python server: clone the repo and run <code>python webapp/server.py</code>.</span>
-  </div>
-  <div class="flow">''', 1)
+    idx = idx.replace('<title>Fisher-Price Record Studio</title>', '<title>Fisher-Price Record Studio (static demo)</title>')
+    idx = idx.replace('<div class="wrap">', '''<div class="topbar"><b>Static demo.</b> This site has no server behind it: it shows the sample scan and lets you try the designer, but scanning your own photo and exporting STL need the studio running locally. Clone <a href="https://github.com/shihanqu/fisher-price-record-studio">the repo</a> and run <code>python webapp/server.py</code>.</div>
+<div class="wrap">''', 1)
+    idx = idx.replace('<h1>Fisher-Price Record Studio</h1>', '<h1>Fisher-Price Record Studio <span class="badge">Static demo</span></h1>', 1)
+    idx = idx.replace('</style>', '''  .topbar { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:10px 24px; font-size:14px; text-align:center; }
+  .topbar a { color:#1d6fb8; } .topbar code { background:#fbe7b8; padding:1px 5px; border-radius:4px; }
+  .badge { display:inline-block; vertical-align:middle; background:#f28c28; color:#fff; font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:4px 10px; border-radius:999px; margin-left:10px; }
+</style>''', 1)
     open(os.path.join(DOCS, "index.html"), "w").write(idx)
     shutil.copy(os.path.join(HERE, "static-api.js"), os.path.join(DOCS, "static-api.js"))
     for shot in ("scanner.png", "designer.png"):

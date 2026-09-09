@@ -17,6 +17,8 @@
   header .home:hover { color:var(--accent); }
   header .other { margin-left:auto; color:var(--accent); font-size:13px; }
   .banner { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:8px 16px; font-size:13px; }
+  .banner code { background:#fbe7b8; padding:1px 4px; border-radius:3px; }
+  .badge { background:#f28c28; color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
   main { display:grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 460px); gap:12px; padding:12px; align-items:start; }
   .side { position:sticky; top:12px; }
   /* narrow window: one column -- loop, import, disc map, then the 3D preview & export at the bottom */
@@ -54,9 +56,10 @@
   <a class="home" href="./index.html">Fisher-Price Record Studio</a>
   <h1>Record Designer</h1>
   <span class="sub">draw or import a loop &rarr; it becomes pins on the 22 tracks &rarr; preview &rarr; download STL</span>
+  <span id="static-badge" class="badge" hidden>Static demo</span>
   <a class="other" href="./scanner.html">Note scanner &rarr;</a>
 </header>
-<div id="static-banner" class="banner" hidden>Hosted demo: this page runs without the Python server, so it can show the built-in sample only. Photo scanning, STL export and MIDI/WAV downloads need the studio running locally (see the README).</div>
+<div id="static-banner" class="banner" hidden><b>Static demo.</b> This copy runs without the Python server, so it can only show the built-in sample. Scanning your own photo, exporting STL, and MIDI/WAV downloads need the studio running locally: clone the repo and run <code>python webapp/server.py</code>.</div>
 <main>
   <div class="stack">
     <div class="card">
@@ -138,7 +141,7 @@ C5 Eb5 G5 C6 . G5 Eb5 C5 | Ab4 C5 Eb5 Ab5 . Eb5 C5 Ab4"></textarea>
 <script src="./static-api.js"></script>
 <script type="module">
 const api = (path, opts) => (window.STATIC_API ? window.STATIC_API(path, opts) : fetch(path, opts));
-if (window.STATIC_API) document.getElementById('static-banner').hidden = false;
+if (window.STATIC_API) { document.getElementById('static-banner').hidden = false; document.getElementById('static-badge').hidden = false; document.title += ' (static demo)'; }
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
