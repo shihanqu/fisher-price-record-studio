@@ -17,6 +17,9 @@
   header .other { margin-left:auto; color:var(--accent); font-size:13px; }
   .banner { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:8px 16px; font-size:13px; }
   .banner code { background:#fbe7b8; padding:1px 4px; border-radius:3px; }
+  .gh { display:inline-flex; align-items:center; gap:6px; color:var(--ink); text-decoration:none; font-size:12.5px; border:1px solid var(--line); border-radius:6px; padding:3px 8px; background:#fff; white-space:nowrap; }
+  .gh:hover { border-color:#aaa; }
+  .gh b { font-weight:600; color:var(--muted); border-left:1px solid var(--line); padding-left:6px; }
   .badge { background:#f28c28; color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
   main { display:grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1fr); gap:12px; padding:12px; }
   @media (max-width:900px) { main { grid-template-columns:1fr; } }
@@ -55,6 +58,7 @@
   <h1>Note Scanner</h1>
   <span class="sub">photo of a record &rarr; pins &rarr; notes &rarr; play / export</span>
   <span id="static-badge" class="badge" hidden>Static demo</span>
+  <a class="gh" id="gh-link" href="https://github.com/shihanqu/fisher-price-record-studio" target="_blank" rel="noopener" title="Star on GitHub"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span><b id="gh-stars" title="stars">&#9733; &hellip;</b></a>
   <a class="other" href="./designer.html">Record designer &rarr;</a>
 </header>
 <div id="static-banner" class="banner" hidden><b>Static demo.</b> This copy runs without the Python server, so it can only show the built-in sample. Scanning your own photo, exporting STL, and MIDI/WAV downloads need the studio running locally: clone the repo and run <code>python webapp/server.py</code>.</div>
@@ -212,19 +216,24 @@ function drawSweep() {
 }
 
 // ---------------------------------------------------------------- audio
-let actx = null, timer = null;
+let actx = null, timer = null, master = null, voices = [];
 function ensureAudio() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); }
+// Every note of one playback goes through `master`, so stop() can silence
+// notes that were already handed to the audio engine, not just unscheduled ones.
 function pluck(midi, when, gain) {
+  const out = master || actx.destination;
   const f = 440 * Math.pow(2, (midi - 69) / 12);
-  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(gain, when + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, when + 1.6); g.connect(actx.destination);
+  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(gain, when + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, when + 1.6); g.connect(out);
   for (const [ratio, amp, dec] of [[1, 1, 1.5], [6.27, 0.12, 6], [17.55, 0.03, 12]]) {
     const o = actx.createOscillator(); o.frequency.value = f * ratio;
     const og = actx.createGain(); og.gain.setValueAtTime(amp, when); og.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 / dec * 1.5);
     o.connect(og); og.connect(g); o.start(when); o.stop(when + 2);
+    voices.push(o);
   }
 }
 function play() {
   stop(); if (!score) return; ensureAudio();
+  master = actx.createGain(); master.connect(actx.destination);
   const spr = +$('spr').value, L = score.length_beats, spb = spr / L;
   const t0 = actx.currentTime + 0.05;
   const sched = k => score.notes.forEach(n => pluck(n.midi, t0 + (k * L + n.beat) * spb, 0.22 * Math.min(1, n.velocity ?? 1)));
@@ -235,7 +244,13 @@ function play() {
     playhead = beat % L; drawRoll(); drawSweep();
   }, 30);
 }
-function stop() { if (timer) clearInterval(timer); timer = null; playhead = -1; drawRoll(); drawSweep(); }
+function stop() {
+  if (timer) clearInterval(timer); timer = null; playhead = -1;
+  if (master) { master.gain.setValueAtTime(0, actx.currentTime); master.disconnect(); master = null; }
+  for (const o of voices) { try { o.stop(); } catch (e) { /* not started yet: it is disconnected anyway */ } }
+  voices = [];
+  drawRoll(); drawSweep();
+}
 $('play').onclick = play; $('stop').onclick = stop;
 
 // ---------------------------------------------------------------- export
@@ -251,6 +266,13 @@ new ResizeObserver(() => { drawRoll(); drawSweep(); }).observe(document.body);
 // demo mode (used for the home-page screenshots): scan the sample before the page reports 'loaded'
 if (new URLSearchParams(location.search).has('demo')) { const b = await (await api('/sample/edelweiss_record.jpg')).blob(); await scan(new File([b], 'edelweiss_record.jpg', { type: 'image/jpeg' })); await new Promise(r => setTimeout(r, 400)); }
 window.__demoDone = true;
+</script>
+<script>
+(function () { // live star count from the GitHub API (public, no token); the link works without it
+  fetch('https://api.github.com/repos/shihanqu/fisher-price-record-studio').then(r => r.ok ? r.json() : null)
+    .then(d => { const el = document.getElementById('gh-stars'); if (!el) return; if (d && typeof d.stargazers_count === 'number') el.innerHTML = '&#9733; ' + d.stargazers_count.toLocaleString(); else el.innerHTML = '&#9733;'; })
+    .catch(() => { const el = document.getElementById('gh-stars'); if (el) el.innerHTML = '&#9733;'; });
+})();
 </script>
 </body>
 </html>
