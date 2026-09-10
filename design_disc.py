@@ -68,6 +68,8 @@ def main():
         print(f"  snapped {G.midi_name(om)} -> {G.midi_name(nm)} at beat {b:g}")
     for b, m, why in rep.dropped:
         print(f"  DROPPED {G.midi_name(m)} at beat {b:g}: {why}")
+    for b, count in S.crowded_moments(sc):
+        print(f"  WARNING {count} notes at once at beat {b:g}: the motor can only pluck 3 together")
 
     out = a.out or os.path.join("output", (sc.title or "record").replace(" ", "_"))
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)

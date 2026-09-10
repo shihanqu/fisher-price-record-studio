@@ -260,6 +260,28 @@ def assign_tracks(score: Score, transpose: int = 0, snap: bool = True,
     return rep
 
 
+def crowded_moments(score: Score, limit: int = 3, window_deg: float = 1.0) -> list:
+    """Moments where more than `limit` notes are plucked together.
+
+    The spring motor can only drive about three tines at once, so more than
+    that risks stalling the record.  Notes within `window_deg` of each other
+    on the disc count as together.  Returns [(beat, count), ...] in disc order.
+    """
+    pts = sorted((score.beat_to_angle(n.beat) % 360.0, n.beat) for n in score.notes)
+    groups = []
+    for a, beat in pts:
+        if groups and a - groups[-1]["last"] < window_deg:
+            groups[-1]["count"] += 1
+            groups[-1]["last"] = a
+        else:
+            groups.append({"beat": beat, "first": a, "last": a, "count": 1})
+    if len(groups) > 1 and groups[0]["first"] + 360.0 - groups[-1]["last"] < window_deg:
+        groups[0]["count"] += groups[-1]["count"]      # the loop repeats: the end touches the start
+        groups[0]["beat"] = groups[-1]["beat"]
+        groups.pop()
+    return [(g["beat"], g["count"]) for g in groups if g["count"] > limit]
+
+
 def repeat_to_fill(score: Score, repeats: int) -> Score:
     """Tile the loop `repeats` times around the disc."""
     out = Score(score.length_beats * repeats, [], score.title, score.seconds_per_rev, dict(score.meta))

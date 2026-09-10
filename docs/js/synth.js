@@ -77,7 +77,7 @@ export const renderWav = (sc, opts = {}) => encodeWav(renderMix(sc, opts), opts.
  * of letting them ring on (and pile up under the next play()).
  */
 export class Player {
-  constructor() { this.ctx = null; this.master = null; this.voices = []; this.timer = null; }
+  constructor() { this.ctx = null; this.master = null; this.voices = []; this.timer = null; this.raf = null; this.onStop = null; }
 
   ensure() {
     if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -101,7 +101,7 @@ export class Player {
       og.gain.exponentialRampToValueAtTime(0.0001, when + (2.2 / dec) * 1.5);
       o.connect(og); og.connect(g);
       o.start(when); o.stop(when + 2.0);
-      if (out !== ctx.destination) this.voices.push(o);
+      if (out !== ctx.destination) this.voices.push({ o, end: when + 2.0 });
     }
   }
 
@@ -124,9 +124,10 @@ export class Player {
 
   /**
    * Play `notes` ({beat, midi, velocity}) over a loop of `loopBeats`.
-   * onTick(beat) fires about 30 times a second with the beat being heard (it
-   * follows the audio clock, output latency included, so drawings keep in step
-   * with the sound). keepLooping() is asked as each pass ends.
+   * onTick(beatInLoop, beatsSinceStart) runs on every animation frame with the
+   * beat being heard. It follows the audio output clock, latency included, so
+   * anything drawn from it moves smoothly and stays in step with the sound.
+   * keepLooping() is asked as each pass ends.
    */
   play({ notes, loopBeats, secPerBeat, keepLooping = () => true, onTick = () => {}, onStop = () => {} }) {
     this.stop();
@@ -139,28 +140,41 @@ export class Player {
     const t0 = ctx.currentTime + 0.1;
     let queued = 0, heardPass = 0;
     const queuePass = () => {
+      this.voices = this.voices.filter((v) => v.end > ctx.currentTime);
       const start = t0 + queued * passSec;
       for (const n of sorted) this.pluck(n.midi, start + n.beat * secPerBeat, 0.22 * Math.min(1, n.velocity ?? 1), this.master);
       queued++;
     };
-    queuePass();
-    const tick = () => {
-      if (ctx.currentTime + 1 >= t0 + queued * passSec && keepLooping()) queuePass();   // keep about a second queued
-      const t = this.heardTime() - t0;
-      const pass = Math.floor(Math.max(0, t) / passSec);
-      if (pass >= queued || (pass > heardPass && !keepLooping())) { this.stop(); return; }
+    // Queue each pass a couple of seconds early and stop when the sound runs
+    // out. This runs on a timer, so it keeps going in a background tab.
+    const check = () => {
+      if (ctx.currentTime + 2 >= t0 + queued * passSec && keepLooping()) queuePass();
+      const pass = Math.floor(Math.max(0, this.heardTime() - t0) / passSec);
+      if (pass >= queued || (pass > heardPass && !keepLooping())) { this.stop(); return false; }
       heardPass = pass;
-      onTick(t <= 0 ? 0 : (t / secPerBeat) % loopBeats);
+      return true;
     };
-    this.timer = setInterval(tick, 30);
-    tick();
+    // Drawing happens on animation frames, so playheads glide.
+    const frame = () => {
+      this.raf = null;
+      if (this.timer === null || !check()) return;
+      const beats = Math.max(0, this.heardTime() - t0) / secPerBeat;
+      onTick(beats % loopBeats, beats);
+      this.raf = requestAnimationFrame(frame);
+    };
+    queuePass();
+    this.timer = setInterval(check, 100);
+    onTick(0, 0);
+    this.raf = requestAnimationFrame(frame);
   }
 
   stop() {
     if (this.timer !== null) clearInterval(this.timer);
     this.timer = null;
+    if (this.raf !== null) cancelAnimationFrame(this.raf);
+    this.raf = null;
     if (this.master) { this.master.gain.setValueAtTime(0, this.ctx.currentTime); this.master.disconnect(); this.master = null; }
-    for (const o of this.voices) { try { o.stop(); } catch (e) { /* never started; disconnected anyway */ } }
+    for (const v of this.voices) { try { v.o.stop(); } catch (e) { /* never started; disconnected anyway */ } }
     this.voices = [];
     const cb = this.onStop; this.onStop = null;
     if (cb) cb();

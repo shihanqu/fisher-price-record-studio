@@ -4,64 +4,99 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as G from './geometry.js';
-import { assignTracks, bestTransposition, describeReport, fromDict, parseText, quantise, repeatToFill, toDict } from './score.js';
+import { assignTracks, bestTransposition, crowdedMoments, describeReport, fromDict, parseText, quantise, repeatToFill, toDict } from './score.js';
 import { buildRecord, toSTL } from './mesh.js';
 import { scoreFromMidi } from './midi.js';
 import { Player, renderWav } from './synth.js';
 import { scanFile } from './scan.js';
+import { DEFAULT_LOOP } from './default-loop.js';
 import { baseName, fileSafe, initStarBadge, saveBlob } from './common.js';
 
 const $ = (id) => document.getElementById(id);
 const PITCHES = G.PITCH_SET.slice().reverse();          // top row = highest
+const MAX_TOGETHER = 3;                                  // tines the spring motor can pluck at once
 const player = new Player();
 
 let score = { title: 'MY TUNE', length_beats: 16, seconds_per_rev: 45, notes: [], meta: {} };
 let assigned = null;       // the score as it will be printed (repeats, transpose, tracks)
-let playhead = -1;
+let crowded = [];          // [beat, count] wherever the printed score asks too much of the motor
+let playBeat = -1;         // beat being heard within the loop, or -1 when stopped
+let playAbs = 0;           // beats heard since Play was pressed (the disc map needs the whole turn)
 
 const beatsEl = $('beats'), subEl = $('sub');
 const steps = () => Math.round(+beatsEl.value * +subEl.value);
 const stepBeats = () => 1 / +subEl.value;
+const repeats = () => Math.max(1, Math.round(+$('repeats').value || 1));
 
 // ------------------------------------------------------------------ piano roll
-const roll = $('roll'), rctx = roll.getContext('2d');
+// Grid and notes go into an offscreen layer whenever something changes; every
+// animation frame copies that layer and paints the moving playhead on top.
+const roll = $('roll'), rctx = roll.getContext('2d'), rollWrap = $('roll-wrap');
+const rollBase = document.createElement('canvas'), bctx = rollBase.getContext('2d');
 const CW = 22, RH = 20, LEFT = 64, TOP = 18;
+
 function drawRoll() {
-  const n = steps();
-  roll.width = LEFT + n * CW + 8; roll.height = TOP + PITCHES.length * RH + 6;
-  rctx.fillStyle = '#fff'; rctx.fillRect(0, 0, roll.width, roll.height);
+  const n = steps(), sub = +subEl.value, c = bctx;
+  rollBase.width = LEFT + n * CW + 8;
+  rollBase.height = TOP + PITCHES.length * RH + 6;
+  c.fillStyle = '#fff'; c.fillRect(0, 0, rollBase.width, rollBase.height);
   PITCHES.forEach((m, r) => {
     const y = TOP + r * RH;
-    rctx.fillStyle = m % 12 === 8 ? '#f3efe4' : '#fff';       // Ab rows tinted
-    rctx.fillRect(LEFT, y, n * CW, RH);
-    rctx.fillStyle = '#444'; rctx.font = '12px system-ui'; rctx.textAlign = 'right';
-    rctx.fillText(G.midiName(m) + (G.tracksFor(m).length > 1 ? ' ×2' : ''), LEFT - 6, y + 14);
+    c.fillStyle = m % 12 === 8 ? '#f3efe4' : '#fff';       // Ab rows tinted
+    c.fillRect(LEFT, y, n * CW, RH);
+    c.fillStyle = '#444'; c.font = '12px system-ui'; c.textAlign = 'right';
+    c.fillText(G.midiName(m) + (G.tracksFor(m).length > 1 ? ' ×2' : ''), LEFT - 6, y + 14);
   });
   for (let s = 0; s <= n; s++) {
     const x = LEFT + s * CW;
-    rctx.strokeStyle = s % +subEl.value === 0 ? '#b9b1a3' : '#e6e0d4';
-    rctx.lineWidth = s % (+subEl.value * 4) === 0 ? 1.5 : 1;
-    rctx.beginPath(); rctx.moveTo(x, TOP); rctx.lineTo(x, TOP + PITCHES.length * RH); rctx.stroke();
-    if (s % +subEl.value === 0 && s < n) { rctx.fillStyle = '#888'; rctx.textAlign = 'left'; rctx.font = '11px system-ui'; rctx.fillText(String(s / +subEl.value + 1), x + 3, 12); }
+    c.strokeStyle = s % sub === 0 ? '#b9b1a3' : '#e6e0d4';
+    c.lineWidth = s % (sub * 4) === 0 ? 1.5 : 1;
+    c.beginPath(); c.moveTo(x, TOP); c.lineTo(x, TOP + PITCHES.length * RH); c.stroke();
+    if (s % sub === 0 && s < n) { c.fillStyle = '#888'; c.textAlign = 'left'; c.font = '11px system-ui'; c.fillText(String(s / sub + 1), x + 3, 12); }
   }
-  rctx.lineWidth = 1;
-  rctx.strokeStyle = '#e6e0d4';
-  for (let r = 0; r <= PITCHES.length; r++) { const y = TOP + r * RH; rctx.beginPath(); rctx.moveTo(LEFT, y); rctx.lineTo(LEFT + n * CW, y); rctx.stroke(); }
+  c.lineWidth = 1;
+  c.strokeStyle = '#e6e0d4';
+  for (let r = 0; r <= PITCHES.length; r++) { const y = TOP + r * RH; c.beginPath(); c.moveTo(LEFT, y); c.lineTo(LEFT + n * CW, y); c.stroke(); }
+  c.fillStyle = '#c0392b';                                 // red mark: more notes at once than the motor can pluck
+  for (const s of crowdedSteps()) c.fillRect(LEFT + s * CW + 2, TOP - 4, CW - 4, 3);
   const conflicts = spacingConflicts();
   for (const nt of score.notes) {
     const r = PITCHES.indexOf(nt.midi);
     if (r < 0) continue;
-    const x = LEFT + Math.round(nt.beat / stepBeats()) * CW, y = TOP + r * RH;
-    rctx.fillStyle = conflicts.has(nt) ? '#b8b8b8' : '#3aa06a';
-    rctx.beginPath(); rctx.roundRect(x + 2, y + 2, CW - 4, RH - 4, 4); rctx.fill();
+    c.fillStyle = conflicts.has(nt) ? '#b8b8b8' : '#3aa06a';
+    c.beginPath(); c.roundRect(LEFT + Math.round(nt.beat / stepBeats()) * CW + 2, TOP + r * RH + 2, CW - 4, RH - 4, 4); c.fill();
   }
-  if (playhead >= 0) { const x = LEFT + playhead * CW; rctx.fillStyle = 'rgba(242,140,40,.35)'; rctx.fillRect(x, TOP, CW, PITCHES.length * RH); }
+  paintRoll();
+}
+
+function paintRoll() {
+  if (roll.width !== rollBase.width || roll.height !== rollBase.height) { roll.width = rollBase.width; roll.height = rollBase.height; }
+  rctx.drawImage(rollBase, 0, 0);
+  if (playBeat < 0) return;
+  const sb = stepBeats(), s = Math.floor(playBeat / sb + 1e-9);
+  rctx.fillStyle = '#f28c28';                              // the notes being plucked light up
+  for (const nt of score.notes) {
+    if (Math.round(nt.beat / sb) !== s) continue;
+    const r = PITCHES.indexOf(nt.midi);
+    if (r >= 0) { rctx.beginPath(); rctx.roundRect(LEFT + s * CW + 2, TOP + r * RH + 2, CW - 4, RH - 4, 4); rctx.fill(); }
+  }
+  const x = LEFT + (playBeat / sb) * CW;                   // the playhead glides between steps
+  rctx.fillStyle = 'rgba(242,140,40,.9)';
+  rctx.fillRect(x - 1, TOP, 2, PITCHES.length * RH);
+  followPlayhead(x);
+}
+
+/** On loops wider than the box, scroll so the playhead stays in view. */
+function followPlayhead(x) {
+  const w = rollWrap.clientWidth, left = rollWrap.scrollLeft;
+  if (roll.width <= w) return;
+  if (x < left + 30 || x > left + w - 60) rollWrap.scrollLeft = Math.max(0, x - w * 0.25);
 }
 
 /** Notes that the track assignment will have to drop (drawn grey). */
 function spacingConflicts() {
   const bad = new Set(), last = {};
-  const L = score.length_beats * +$('repeats').value;
+  const L = score.length_beats * repeats();
   for (const n of score.notes.slice().sort((a, b) => a.beat - b.beat || a.midi - b.midi)) {
     const cands = G.tracksFor(n.midi);
     if (!cands.length) { bad.add(n); continue; }
@@ -70,6 +105,13 @@ function spacingConflicts() {
     if (t === undefined) bad.add(n); else last[t] = n.beat;
   }
   return bad;
+}
+
+/** Steps of the loop where the printed record plucks more than MAX_TOGETHER notes at once. */
+function crowdedSteps() {
+  const L = score.length_beats, out = new Set();
+  for (const [beat] of crowded) out.add(Math.round((((beat % L) + L) % L) / stepBeats()) % steps());
+  return out;
 }
 
 roll.addEventListener('click', (e) => {
@@ -85,41 +127,49 @@ roll.addEventListener('click', (e) => {
 
 // ------------------------------------------------------------------ disc map
 const disc = $('disc'), dctx = disc.getContext('2d');
+const discBase = document.createElement('canvas'), dbx = discBase.getContext('2d');
+const strokePath = (ctx, pts) => { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); };
+
 function drawDisc() {
-  const W = disc.width, c = W / 2, k = (W / 2 - 6) / G.DISC_RADIUS;
-  dctx.clearRect(0, 0, W, W);
-  dctx.fillStyle = '#4db37a'; dctx.beginPath(); dctx.arc(c, c, G.DISC_RADIUS * k, 0, 7); dctx.fill();
-  dctx.fillStyle = '#3f9d68'; dctx.beginPath(); dctx.arc(c, c, G.LABEL_RADIUS * k, 0, 7); dctx.fill();
-  dctx.fillStyle = '#f4f1ea'; dctx.beginPath(); dctx.arc(c, c, G.CENTER_HOLE_RADIUS * k, 0, 7); dctx.fill();
-  for (let i = 0; i < 4; i++) { dctx.beginPath(); dctx.arc(c + G.DRIVE_HOLE_OFFSET * k * Math.cos((i * Math.PI) / 2), c - G.DRIVE_HOLE_OFFSET * k * Math.sin((i * Math.PI) / 2), G.DRIVE_HOLE_RADIUS * k, 0, 7); dctx.fill(); }
-  dctx.strokeStyle = '#2b7a50'; dctx.lineWidth = G.GROOVE_WIDTH * k;
-  for (const r0 of G.GROOVE_INNER_RADII) { dctx.beginPath(); dctx.arc(c, c, (r0 + G.GROOVE_WIDTH / 2) * k, 0, 7); dctx.stroke(); }
+  const W = disc.width, c = W / 2, k = (W / 2 - 6) / G.DISC_RADIUS, x = dbx;
+  discBase.width = W; discBase.height = disc.height;
+  x.fillStyle = '#4db37a'; x.beginPath(); x.arc(c, c, G.DISC_RADIUS * k, 0, 7); x.fill();
+  x.fillStyle = '#3f9d68'; x.beginPath(); x.arc(c, c, G.LABEL_RADIUS * k, 0, 7); x.fill();
+  x.fillStyle = '#f4f1ea'; x.beginPath(); x.arc(c, c, G.CENTER_HOLE_RADIUS * k, 0, 7); x.fill();
+  for (let i = 0; i < 4; i++) { x.beginPath(); x.arc(c + G.DRIVE_HOLE_OFFSET * k * Math.cos((i * Math.PI) / 2), c - G.DRIVE_HOLE_OFFSET * k * Math.sin((i * Math.PI) / 2), G.DRIVE_HOLE_RADIUS * k, 0, 7); x.fill(); }
+  x.strokeStyle = '#2b7a50'; x.lineWidth = G.GROOVE_WIDTH * k;
+  for (const r0 of G.GROOVE_INNER_RADII) { x.beginPath(); x.arc(c, c, (r0 + G.GROOVE_WIDTH / 2) * k, 0, 7); x.stroke(); }
   const src = assigned || score, L = src.length_beats;
   for (const n of src.notes) {
     const t = n.track ?? G.tracksFor(n.midi)[0];
     if (t === undefined) continue;
     const r = G.TRACK_RADII[t] * k, a = (2 * Math.PI * n.beat) / L - G.HEAD_OFFSET_MM / G.TRACK_RADII[t];
-    dctx.fillStyle = t % 2 === 0 ? '#ffe680' : '#ffb347';
-    dctx.beginPath(); dctx.arc(c + r * Math.cos(a), c - r * Math.sin(a), Math.max(1.6, 0.6 * k), 0, 7); dctx.fill();
+    x.fillStyle = t % 2 === 0 ? '#ffe680' : '#ffb347';
+    x.beginPath(); x.arc(c + r * Math.cos(a), c - r * Math.sin(a), Math.max(1.6, 0.6 * k), 0, 7); x.fill();
   }
-  // the comb (orange) touches the pins of beat 0; see geometry.armLine
-  const stroke = (pts) => { dctx.beginPath(); pts.forEach(([x, y], i) => (i ? dctx.lineTo(x, y) : dctx.moveTo(x, y))); dctx.stroke(); };
-  dctx.strokeStyle = '#f28c28'; dctx.lineWidth = 3;
-  stroke(G.armLine(0, c, c, k));
-  if (playhead >= 0) {
-    dctx.strokeStyle = 'rgba(255,255,255,.8)'; dctx.lineWidth = 1.5;
-    stroke(G.armLine((360 * playhead * stepBeats()) / L, c, c, k));
-  }
+  x.strokeStyle = '#f28c28'; x.lineWidth = 3;                // the comb touches the pins of beat 0 (geometry.armLine)
+  strokePath(x, G.armLine(0, c, c, k));
+  paintDisc();
+}
+
+function paintDisc() {
+  const W = disc.width, c = W / 2, k = (W / 2 - 6) / G.DISC_RADIUS;
+  dctx.clearRect(0, 0, W, disc.height);
+  dctx.drawImage(discBase, 0, 0);
+  if (playBeat < 0) return;
+  const total = score.length_beats * repeats();           // the loop goes round the disc `repeats` times
+  dctx.strokeStyle = 'rgba(255,255,255,.85)'; dctx.lineWidth = 1.5;
+  strokePath(dctx, G.armLine((360 * (playAbs % total)) / total, c, c, k));
 }
 
 // ------------------------------------------------------------------ playback
 $('play').onclick = () => {
   const L = score.length_beats;
   player.play({
-    notes: score.notes, loopBeats: L, secPerBeat: +$('spr').value / (L * +$('repeats').value),
+    notes: score.notes, loopBeats: L, secPerBeat: +$('spr').value / (L * repeats()),
     keepLooping: () => $('loopplay').checked,
-    onTick: (beat) => { playhead = Math.floor(beat / stepBeats()); drawRoll(); drawDisc(); },
-    onStop: () => { playhead = -1; drawRoll(); drawDisc(); },
+    onTick: (beat, abs) => { playBeat = beat; playAbs = abs; paintRoll(); paintDisc(); },
+    onStop: () => { playBeat = -1; paintRoll(); paintDisc(); },
   });
 };
 $('stop').onclick = () => player.stop();
@@ -128,8 +178,7 @@ $('stop').onclick = () => player.stop();
 /** The score as it goes on the record: repeated, transposed and given tracks. */
 function assignedScore() {
   let sc = fromDict({ ...score, title: $('title').value, seconds_per_rev: +$('spr').value });
-  const repeats = Math.max(1, Math.round(+$('repeats').value || 1));
-  if (repeats > 1) sc = repeatToFill(sc, repeats);
+  if (repeats() > 1) sc = repeatToFill(sc, repeats());
   for (const n of sc.notes) n.track = null;
   let tr = Math.round(+$('transpose').value || 0);
   if ($('autotr').checked) tr = bestTransposition(sc.notes.map((n) => n.midi))[0];
@@ -143,7 +192,16 @@ function showReport(text, bad = false) { const el = $('report'); el.textContent 
 function reassign() {
   const { sc, rep, tr } = assignedScore();
   assigned = sc;
-  showReport((notice ? notice + '\n' : '') + describeReport(rep, tr).join('\n'));
+  crowded = crowdedMoments(sc, MAX_TOGETHER);
+  const lines = describeReport(rep, tr);
+  const L = score.length_beats, seen = new Set();
+  for (const [beat, count] of crowded) {
+    const b = +(((beat % L) + L) % L).toFixed(3);
+    if (seen.has(b)) continue;
+    seen.add(b);
+    lines.push(`CROWDED beat ${b}: ${count} notes at once, but the motor can only pluck ${MAX_TOGETHER} together`);
+  }
+  showReport((notice ? notice + '\n' : '') + lines.join('\n'));
 }
 
 // ------------------------------------------------------------------ 3D preview (built in the browser)
@@ -225,13 +283,15 @@ $('dlwav').onclick = () => saveBlob(new Blob([renderWav(assignedScore().sc, { se
 for (const id of ['label', 'thick', 'binset']) $(id).addEventListener(id === 'label' ? 'input' : 'change', scheduleBuild);
 
 // ------------------------------------------------------------------ imports
-function loadScore(s) {
+/** Show a score in the editor. Imported files are whole records, so they start at one repeat. */
+function loadScore(s, { repeats: reps = null } = {}) {
   score = { title: s.title || 'TUNE', length_beats: s.length_beats, seconds_per_rev: s.seconds_per_rev || 45, notes: s.notes.map((n) => ({ beat: n.beat, midi: n.midi, velocity: n.velocity ?? 1 })), meta: s.meta || {} };
   // the smallest subdivision (1..4) that puts every note on a cell
   let sub = 4;
   for (const cand of [1, 2, 3, 4]) if (score.notes.every((n) => Math.abs(n.beat * cand - Math.round(n.beat * cand)) < 1e-6)) { sub = cand; break; }
   subEl.value = String(sub);
   beatsEl.value = Math.ceil(score.length_beats);
+  if (reps !== null) $('repeats').value = reps;
   $('title').value = score.title;
   $('label').value = score.title.slice(0, 14).toUpperCase();
   $('spr').value = score.seconds_per_rev;
@@ -243,7 +303,7 @@ $('midi').onchange = async (e) => {
   if (!f) return;
   try {
     const sc = scoreFromMidi(await f.arrayBuffer(), baseName(f.name));
-    loadScore(toDict(sc));
+    loadScore(toDict(sc), { repeats: 1 });
     const [shift, bad] = bestTransposition(sc.notes.map((n) => n.midi));
     if (shift) { $('transpose').value = shift; notice = `suggested transpose ${shift > 0 ? '+' : ''}${shift} semitones (${bad} notes still off the comb)`; }
     changed();
@@ -254,7 +314,7 @@ $('json').onchange = async (e) => {
   const f = e.target.files[0];
   e.target.value = '';
   if (!f) return;
-  try { loadScore(JSON.parse(await f.text())); changed(); } catch (err) { showReport('Error: ' + err.message, true); }
+  try { loadScore(JSON.parse(await f.text()), { repeats: 1 }); changed(); } catch (err) { showReport('Error: ' + err.message, true); }
 };
 $('photo').onchange = async (e) => {
   const f = e.target.files[0];
@@ -263,7 +323,7 @@ $('photo').onchange = async (e) => {
   try {
     const res = await scanFile(f, { title: baseName(f.name) }, (msg) => showReport(msg + '…'));
     const q = Math.round(+$('pq').value || 0);
-    loadScore(toDict(q > 0 ? quantise(res.score, q) : res.score));
+    loadScore(toDict(q > 0 ? quantise(res.score, q) : res.score), { repeats: 1 });
     notice = `${res.pins.length} pins read from the photo` + (res.warnings.length ? '\n' + res.warnings.join('\n') : '');
     changed();
     notice = '';
@@ -299,8 +359,13 @@ function changed() {
 initStarBadge();
 let handoff = null;
 try { handoff = JSON.parse(localStorage.getItem('fpmb.handoff') || 'null'); localStorage.removeItem('fpmb.handoff'); } catch (e) { /* storage blocked */ }
-if (handoff && handoff.notes) { loadScore(handoff); changed(); }
-else { $('text').value = 'C5 Eb5 G5 C6 . G5 Eb5 C5 | Ab4 C5 Eb5 Ab5 . Eb5 C5 Ab4'; $('fromtext').click(); }
+if (handoff && handoff.notes) { loadScore(handoff, { repeats: 1 }); changed(); }
+else {
+  subEl.value = String(DEFAULT_LOOP.stepsPerBeat);
+  $('repeats').value = DEFAULT_LOOP.repeats;
+  $('text').value = DEFAULT_LOOP.text;
+  $('fromtext').click();
+}
 // demo mode (used for the home-page screenshots): finish the 3D preview before reporting done
 if (new URLSearchParams(location.search).has('demo')) { await build(); await new Promise((r) => setTimeout(r, 300)); }
 window.__demoDone = true;

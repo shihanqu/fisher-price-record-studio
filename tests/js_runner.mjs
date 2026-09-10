@@ -78,6 +78,19 @@ for (const job of jobs) {
       out.push({ raw: worst(r.score), quantised: worst(S.quantise(r.score, 100)), halfStep: 1.8 });
       break;
     }
+    case 'crowded': out.push(S.crowdedMoments(S.fromDict(job.score), job.limit)); break;
+    case 'default_loop': {
+      const { DEFAULT_LOOP } = await load('default-loop.js');
+      const base = S.parseText(DEFAULT_LOOP.text, 1 / DEFAULT_LOOP.stepsPerBeat, 'default');
+      const sc = S.repeatToFill(base, DEFAULT_LOOP.repeats);
+      const rep = S.assignTracks(sc);
+      out.push({
+        text: DEFAULT_LOOP.text, beats_per_step: 1 / DEFAULT_LOOP.stepsPerBeat, repeats: DEFAULT_LOOP.repeats,
+        notes: base.notes.length, steps: base.length_beats * DEFAULT_LOOP.stepsPerBeat, pins: rep.assigned,
+        dropped: rep.dropped.length, snapped: rep.snapped.length, most_together: Math.max(...S.crowdedMoments(sc, 0).map((g) => g[1])),
+      });
+      break;
+    }
     case 'wav': out.push({ bytes: SY.renderWav(S.fromDict(job.score), { secondsPerRev: job.spr }).byteLength }); break;
     default: throw new Error('unknown op ' + job.op);
   }

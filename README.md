@@ -146,7 +146,10 @@ snapped to the nearest playable pitch, or you can pass `--auto-transpose` to
 find the shift that keeps the most notes. Six of those pitches (Ab5, Bb5, C6,
 Db6, Eb6, F6) have two tines each, and notes alternate between them so quick
 repeats work. Two pins on the same track need at least 2.2 mm of groove between
-them or the second is dropped and reported. One revolution holds the loop
+them or the second is dropped and reported. The player's spring motor can
+only pluck about three tines at once, so the designer warns (and marks the
+step in red on the piano roll) wherever more than three notes sound together.
+One revolution holds the loop
 times the repeat count. The WAV preview uses the seconds-per-revolution setting,
 which I measured at 45 s on my player, though it slows as the spring unwinds.
 

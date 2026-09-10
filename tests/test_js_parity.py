@@ -119,6 +119,28 @@ res = run_js(jobs)
 check("track assignment, quantising and transposition agree", all(close_dicts(r, w) for r, w in zip(res, want)),
       f"{sum(close_dicts(r, w) for r, w in zip(res, want))}/{len(want)}")
 
+jobs, want = [], []
+for seed in range(8):
+    r2 = np.random.default_rng(100 + seed)
+    length = float(r2.choice([8, 16, 32]))
+    notes = []
+    for _ in range(int(r2.integers(10, 60))):
+        beat = float(r2.integers(0, int(length * 2)) / 2)
+        for _ in range(int(r2.integers(1, 6))):      # chords of 1 to 5, some slightly strummed
+            notes.append({"beat": beat + float(r2.choice([0, 0, 0, 0.001])), "midi": int(r2.choice(G.PITCH_SET)), "velocity": 1.0})
+    d = {"title": "c", "length_beats": length, "seconds_per_rev": 45.0, "meta": {}, "notes": notes}
+    jobs.append({"op": "crowded", "score": d, "limit": 3})
+    want.append([list(x) for x in S.crowded_moments(S.Score.from_dict(d), 3)])
+res = run_js(jobs)
+check("crowded-chord warnings agree", all(close_dicts(r, w) for r, w in zip(res, want)), f"{sum(len(w) for w in want)} crowded moments in {len(want)} scores")
+
+dl = run_js([{"op": "default_loop"}])[0]
+dpy = S.repeat_to_fill(S.parse_text(dl["text"], dl["beats_per_step"], "d"), dl["repeats"])
+dprep = S.assign_tracks(dpy)
+check("designer's default loop fits the player", dl["dropped"] == 0 and dl["snapped"] == 0 and dl["most_together"] <= 3
+      and dprep.assigned == dl["pins"] and not dprep.dropped and not S.crowded_moments(dpy),
+      f"{dl['notes']} notes over {dl['steps']:g} steps, {dl['pins']} pins on the disc, at most {dl['most_together']} at once")
+
 # ------------------------------------------------------------------ MIDI
 ed = S.Score.load(os.path.join(ROOT, "output", "edelweiss.json"))
 starter = S.parse_text(texts[0], 0.5, "MY TUNE")

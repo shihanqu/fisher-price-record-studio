@@ -113,43 +113,51 @@ function drawSweep() {
 }
 
 // ---------------------------------------------------------------- notes over one revolution
+// The chart goes into an offscreen layer when the notes change; each animation
+// frame copies that layer and paints the playhead on top.
 const roll = $('roll'), rctx = roll.getContext('2d');
+const rollBase = document.createElement('canvas'), bctx = rollBase.getContext('2d');
+const RLEFT = 46, RTOP = 8, RRH = 18;
 function drawRoll() {
   if (!score) return;
-  const P = G.PITCH_SET.slice().reverse();
-  const W = Math.max(900, roll.parentElement.clientWidth - 2), LEFT = 46, TOP = 8, RH = 18, H = TOP + P.length * RH + 24;
-  roll.width = W; roll.height = H;
-  rctx.fillStyle = '#fff'; rctx.fillRect(0, 0, W, H);
-  const span = W - LEFT - 8, L = score.length_beats;
+  const P = G.PITCH_SET.slice().reverse(), c = bctx;
+  const W = Math.max(900, roll.parentElement.clientWidth - 2), H = RTOP + P.length * RRH + 24;
+  rollBase.width = W; rollBase.height = H;
+  c.fillStyle = '#fff'; c.fillRect(0, 0, W, H);
+  const span = W - RLEFT - 8, L = score.length_beats;
   P.forEach((m, r) => {
-    const y = TOP + r * RH;
-    rctx.fillStyle = m % 12 === 8 ? '#f3efe4' : '#fff';
-    rctx.fillRect(LEFT, y, span, RH);
-    rctx.fillStyle = '#444'; rctx.font = '11px system-ui'; rctx.textAlign = 'right';
-    rctx.fillText(G.midiName(m), LEFT - 5, y + 13);
+    const y = RTOP + r * RRH;
+    c.fillStyle = m % 12 === 8 ? '#f3efe4' : '#fff';
+    c.fillRect(RLEFT, y, span, RRH);
+    c.fillStyle = '#444'; c.font = '11px system-ui'; c.textAlign = 'right';
+    c.fillText(G.midiName(m), RLEFT - 5, y + 13);
   });
-  rctx.strokeStyle = '#e6e0d4';
-  for (let r = 0; r <= P.length; r++) { const y = TOP + r * RH; rctx.beginPath(); rctx.moveTo(LEFT, y); rctx.lineTo(LEFT + span, y); rctx.stroke(); }
+  c.strokeStyle = '#e6e0d4';
+  for (let r = 0; r <= P.length; r++) { const y = RTOP + r * RRH; c.beginPath(); c.moveTo(RLEFT, y); c.lineTo(RLEFT + span, y); c.stroke(); }
   const spr = +$('spr').value;
-  rctx.fillStyle = '#888'; rctx.textAlign = 'left';
+  c.fillStyle = '#888'; c.textAlign = 'left';
   for (let s = 0; s < spr; s += 5) {
-    const x = LEFT + (span * s) / spr;
-    rctx.strokeStyle = '#d9d2c5'; rctx.beginPath(); rctx.moveTo(x, TOP); rctx.lineTo(x, TOP + P.length * RH); rctx.stroke();
-    rctx.fillText(s + ' s', x + 2, TOP + P.length * RH + 14);
+    const x = RLEFT + (span * s) / spr;
+    c.strokeStyle = '#d9d2c5'; c.beginPath(); c.moveTo(x, RTOP); c.lineTo(x, RTOP + P.length * RRH); c.stroke();
+    c.fillText(s + ' s', x + 2, RTOP + P.length * RRH + 14);
   }
-  rctx.fillStyle = '#3aa06a';
+  c.fillStyle = '#3aa06a';
   for (const n of score.notes) {
     const r = P.indexOf(n.midi);
     if (r < 0) continue;
-    const x = LEFT + (span * n.beat) / L, y = TOP + r * RH;
-    rctx.beginPath(); rctx.roundRect(x - 3, y + 3, 7, RH - 6, 2); rctx.fill();
+    c.beginPath(); c.roundRect(RLEFT + (span * n.beat) / L - 3, RTOP + r * RRH + 3, 7, RRH - 6, 2); c.fill();
   }
-  if (playhead >= 0) {
-    const x = LEFT + (span * playhead) / L;
-    rctx.strokeStyle = '#f28c28'; rctx.lineWidth = 2;
-    rctx.beginPath(); rctx.moveTo(x, TOP); rctx.lineTo(x, TOP + P.length * RH); rctx.stroke();
-    rctx.lineWidth = 1;
-  }
+  paintRoll();
+}
+
+function paintRoll() {
+  if (!score) return;
+  if (roll.width !== rollBase.width || roll.height !== rollBase.height) { roll.width = rollBase.width; roll.height = rollBase.height; }
+  rctx.drawImage(rollBase, 0, 0);
+  if (playhead < 0) return;
+  const x = RLEFT + ((roll.width - RLEFT - 8) * playhead) / score.length_beats;
+  rctx.fillStyle = '#f28c28';
+  rctx.fillRect(x - 1, RTOP, 2, G.PITCH_SET.length * RRH);
 }
 
 function fillTable() {
@@ -166,8 +174,8 @@ $('play').onclick = () => {
   player.play({
     notes: score.notes, loopBeats: score.length_beats, secPerBeat: spr / score.length_beats,
     keepLooping: () => $('loopplay').checked,
-    onTick: (beat) => { playhead = beat; drawRoll(); drawSweep(); },
-    onStop: () => { playhead = -1; drawRoll(); drawSweep(); },
+    onTick: (beat) => { playhead = beat; paintRoll(); drawSweep(); },
+    onStop: () => { playhead = -1; paintRoll(); drawSweep(); },
   });
 };
 $('stop').onclick = () => player.stop();

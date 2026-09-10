@@ -180,6 +180,26 @@ export function quantise(sc, beatsPerRev) {
   return out;
 }
 
+/**
+ * Moments where more than `limit` notes are plucked together. The spring motor
+ * can only drive about three tines at once, so more than that risks stalling
+ * the record. Notes within `windowDeg` of each other on the disc count as
+ * together. Returns [[beat, count], ...] in disc order.
+ */
+export function crowdedMoments(sc, limit = 3, windowDeg = 1.0) {
+  const pts = sc.notes.map((n) => [pymod(beatToAngle(sc, n.beat), 360), n.beat]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const groups = [];
+  for (const [a, beat] of pts) {
+    const g = groups[groups.length - 1];
+    if (g && a - g.last < windowDeg) { g.count++; g.last = a; } else groups.push({ beat, first: a, last: a, count: 1 });
+  }
+  if (groups.length > 1) {                     // the loop repeats: the end touches the start
+    const head = groups[0], tail = groups[groups.length - 1];
+    if (head.first + 360 - tail.last < windowDeg) { head.count += tail.count; head.beat = tail.beat; groups.pop(); }
+  }
+  return groups.filter((g) => g.count > limit).map((g) => [g.beat, g.count]);
+}
+
 /** Human-readable lines for an assignTracks report. */
 export function describeReport(rep, transpose = 0) {
   const lines = [`${rep.assigned} pins placed` + (transpose ? ` (transposed ${transpose > 0 ? '+' : ''}${transpose} semitones)` : '')];
