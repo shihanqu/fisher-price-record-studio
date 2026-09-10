@@ -13,3 +13,4 @@ output/*
 !output/edelweiss_debug/
 output/edelweiss_debug/*
 !output/edelweiss_debug/02_rectified_pins.jpg
+node_modules/

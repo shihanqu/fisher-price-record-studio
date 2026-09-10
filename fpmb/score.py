@@ -117,15 +117,17 @@ def parse_text(text: str, beats_per_step: float = 1.0, title: str = "") -> Score
     """Very small text notation, one step per whitespace-separated token.
 
         C5 E5 G5 C6 . G5 E5+C5 . |
-    '.' or '-' is a rest, '+' joins simultaneous notes, '|' is ignored
-    (bar line).  Lines starting with '#' are comments.  The loop length is
-    the number of steps.
+    '.', '-' or '_' is a rest, '+' joins simultaneous notes, '|' is ignored
+    (bar line), and a token starting with '#' comments out the rest of the
+    line (so sharps like 'D#5' still work).  The loop length is the number
+    of steps.
     """
     notes: list[Note] = []
     step = 0
     for line in text.splitlines():
-        line = line.split("#", 1)[0]
         for tok in line.split():
+            if tok.startswith("#"):
+                break
             if tok == "|":
                 continue
             if tok not in (".", "-", "_"):

@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Browser app lives in docs/ (served as-is by GitHub Pages); this file only tells Node the .js files are ES modules for the tests."
+}

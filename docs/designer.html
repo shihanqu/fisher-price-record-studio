@@ -10,25 +10,22 @@
           --green:#3aa06a; --green2:#2b7a50; --orange:#f28c28; --accent:#1d6fb8; --bad:#c0392b; }
   * { box-sizing:border-box; }
   body { margin:0; font:14px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
-  header { display:flex; align-items:baseline; gap:14px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); }
+  header { display:flex; align-items:baseline; gap:14px; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
   header h1 { font-size:17px; margin:0; }
   header .sub { color:var(--muted); font-size:12px; }
   header .home { color:var(--muted); text-decoration:none; font-size:12px; letter-spacing:.06em; text-transform:uppercase; padding-right:14px; border-right:1px solid var(--line); }
   header .home:hover { color:var(--accent); }
-  header .other { margin-left:auto; color:var(--accent); font-size:13px; }
-  .banner { background:#fff3d6; color:#6b4b00; border-bottom:1px solid #f0d9a0; padding:8px 16px; font-size:13px; }
-  .banner code { background:#fbe7b8; padding:1px 4px; border-radius:3px; }
-  .gh { display:inline-flex; align-items:center; gap:6px; color:var(--ink); text-decoration:none; font-size:12.5px; border:1px solid var(--line); border-radius:6px; padding:3px 8px; background:#fff; white-space:nowrap; }
+  header .other { color:var(--accent); font-size:13px; }
+  .gh { margin-left:auto; display:inline-flex; align-items:center; gap:6px; color:var(--ink); text-decoration:none; font-size:12.5px; border:1px solid var(--line); border-radius:6px; padding:3px 8px; background:#fff; white-space:nowrap; }
   .gh:hover { border-color:#aaa; }
   .gh b { font-weight:600; color:var(--muted); border-left:1px solid var(--line); padding-left:6px; }
-  .badge { background:#f28c28; color:#fff; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; }
   main { display:grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 460px); gap:12px; padding:12px; align-items:start; }
   .side { position:sticky; top:12px; }
   /* narrow window: one column -- loop, import, disc map, then the 3D preview & export at the bottom */
   @media (max-width:980px) {
     main { grid-template-columns:1fr; }
     .side { position:static; }
-    .side .card:nth-child(2) { order:-1; }            /* disc map above the 3D card */
+    .side .card:nth-child(2) { order:-1; }
     #view { height:clamp(260px, 45vh, 420px); }
   }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
@@ -40,30 +37,28 @@
   button { font:inherit; padding:5px 11px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; }
   button:hover { border-color:#aaa; }
   button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
-  button.primary:disabled { opacity:.5; cursor:default; }
+  button:disabled { opacity:.5; cursor:default; }
   #roll-wrap { overflow:auto; border:1px solid var(--line); border-radius:6px; background:#fff; max-height:520px; }
   canvas#roll { display:block; cursor:crosshair; }
   #disc { width:100%; max-width:300px; aspect-ratio:1; display:block; background:#fff; border:1px solid var(--line); border-radius:6px; margin:0 auto; }
   #view { width:100%; height:clamp(260px, 42vh, 460px); border:1px solid var(--line); border-radius:6px; background:#e9e4d9; overflow:hidden; }
   #view canvas { display:block; width:100% !important; height:100% !important; }
+  #meshinfo { font-size:12px; color:var(--muted); min-height:1.4em; margin-top:4px; }
   #report { font-size:12.5px; white-space:pre-wrap; color:var(--muted); min-height:1.4em; }
-  #report .bad { color:var(--bad); }
+  #report.bad { color:var(--bad); }
   textarea { width:100%; height:64px; font:12.5px ui-monospace, Menlo, monospace; border:1px solid var(--line); border-radius:5px; padding:6px; }
   .stack { display:flex; flex-direction:column; gap:12px; }
   .hint { color:var(--muted); font-size:12px; }
-  kbd { font:11px ui-monospace, Menlo, monospace; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 4px; background:#fff; }
 </style>
 </head>
 <body>
 <header>
-  <a class="home" href="./index.html">Fisher-Price Record Studio</a>
+  <a class="home" href="./">Fisher-Price Record Studio</a>
   <h1>Record Designer</h1>
   <span class="sub">draw or import a loop &rarr; it becomes pins on the 22 tracks &rarr; preview &rarr; download STL</span>
-  <span id="static-badge" class="badge" hidden>Static demo</span>
-  <a class="gh" id="gh-link" href="https://github.com/shihanqu/fisher-price-record-studio" target="_blank" rel="noopener" title="Star on GitHub"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span><b id="gh-stars" title="stars">&#9733; &hellip;</b></a>
-  <a class="other" href="./scanner.html">Note scanner &rarr;</a>
+  <a class="gh" href="https://github.com/shihanqu/fisher-price-record-studio" target="_blank" rel="noopener" title="Star on GitHub"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span><b id="gh-stars" title="stars">&#9733; &hellip;</b></a>
+  <a class="other" href="scanner.html">Note scanner &rarr;</a>
 </header>
-<div id="static-banner" class="banner" hidden><b>Static demo.</b> This copy runs without the Python server, so it can only show the built-in sample. Scanning your own photo, exporting STL, and MIDI/WAV downloads need the studio running locally: clone the repo and run <code>python webapp/server.py</code>.</div>
 <main>
   <div class="stack">
     <div class="card">
@@ -93,13 +88,13 @@
     <div class="card">
       <h2>Import</h2>
       <div class="row">
-        <label>MIDI file <input type="file" id="midi" accept=".mid,.midi"></label>
-        <label>Score JSON <input type="file" id="json" accept=".json"></label>
+        <label>MIDI file <input type="file" id="midi" accept=".mid,.midi,audio/midi"></label>
+        <label>Score JSON <input type="file" id="json" accept=".json,application/json"></label>
         <label>Photo of a record <input type="file" id="photo" accept="image/*"></label>
         <label>quantise photo to <input type="number" id="pq" value="100" min="0" max="400" step="4"> beats/rev</label>
       </div>
       <div class="row" style="align-items:flex-start">
-        <textarea id="text" placeholder="Text notation: one token per step, '.' rest, 'C5+Eb5' chord, '|' ignored.
+        <textarea id="text" placeholder="Text notation: one token per step, '.' rest, 'C5+Eb5' chord, '|' ignored, '#' starts a comment.
 C5 Eb5 G5 C6 . G5 Eb5 C5 | Ab4 C5 Eb5 Ab5 . Eb5 C5 Ab4"></textarea>
         <button id="fromtext">Load text</button>
       </div>
@@ -120,12 +115,12 @@ C5 Eb5 G5 C6 . G5 Eb5 C5 | Ab4 C5 Eb5 Ab5 . Eb5 C5 Ab4"></textarea>
         <label><input type="checkbox" id="binset"> recess underside</label>
       </div>
       <div class="row">
-        <button class="primary" id="build">Build 3D preview</button>
-        <button class="primary" id="dl" disabled>&#8595; Download STL</button>
+        <button class="primary" id="dl">&#8595; Download STL</button>
         <button id="dljson">&#8595; Score JSON</button>
         <button id="dlwav">&#8595; WAV</button>
       </div>
       <div id="view"></div>
+      <div id="meshinfo">Loading the geometry engine&hellip;</div>
       <div id="report"></div>
     </div>
     <div class="card">
@@ -135,327 +130,12 @@ C5 Eb5 G5 C6 . G5 Eb5 C5 | Ab4 C5 Eb5 Ab5 . Eb5 C5 Ab4"></textarea>
     </div>
   </div>
 </main>
-
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three": "./vendor/three/three.module.min.js",
+  "three/addons/controls/OrbitControls.js": "./vendor/three/OrbitControls.js"
 } }
 </script>
-<script src="./static-api.js"></script>
-<script type="module">
-const api = (path, opts) => (window.STATIC_API ? window.STATIC_API(path, opts) : fetch(path, opts));
-if (window.STATIC_API) { document.getElementById('static-banner').hidden = false; document.getElementById('static-badge').hidden = false; document.title += ' (static demo)'; }
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { STLLoader } from 'three/addons/loaders/STLLoader.js';
-
-// ------------------------------------------------------------------ state
-const GEO = await (await api('/api/geometry')).json();
-const PITCHES = GEO.pitch_set.slice().reverse();          // top row = highest
-const NAME = m => GEO.names[m];
-const tracksFor = {}; GEO.track_midi.forEach((m, t) => (tracksFor[m] ||= []).push(t));
-
-let score = { title: 'MY TUNE', length_beats: 16, seconds_per_rev: 45, notes: [], meta: {} };
-let assigned = null;          // last server-assigned score (with tracks)
-let report = null;
-let stlBlob = null;
-
-const $ = id => document.getElementById(id);
-const beatsEl = $('beats'), subEl = $('sub');
-const steps = () => Math.round(+beatsEl.value * +subEl.value);
-const stepBeats = () => 1 / +subEl.value;
-
-// ------------------------------------------------------------------ piano roll
-const roll = $('roll'), rctx = roll.getContext('2d');
-const CW = 22, RH = 20, LEFT = 64, TOP = 18;
-function drawRoll() {
-  const n = steps();
-  roll.width = LEFT + n * CW + 8; roll.height = TOP + PITCHES.length * RH + 6;
-  rctx.fillStyle = '#fff'; rctx.fillRect(0, 0, roll.width, roll.height);
-  // rows
-  PITCHES.forEach((m, r) => {
-    const y = TOP + r * RH;
-    rctx.fillStyle = (m % 12 === 8) ? '#f3efe4' : '#fff';       // Ab rows tinted
-    rctx.fillRect(LEFT, y, n * CW, RH);
-    rctx.fillStyle = '#444'; rctx.font = '12px system-ui';
-    rctx.textAlign = 'right';
-    rctx.fillText(NAME(m) + (tracksFor[m].length > 1 ? ' ×2' : ''), LEFT - 6, y + 14);
-  });
-  // grid
-  for (let s = 0; s <= n; s++) {
-    const x = LEFT + s * CW;
-    rctx.strokeStyle = (s % +subEl.value === 0) ? '#b9b1a3' : '#e6e0d4';
-    rctx.lineWidth = (s % (+subEl.value * 4) === 0) ? 1.5 : 1;
-    rctx.beginPath(); rctx.moveTo(x, TOP); rctx.lineTo(x, TOP + PITCHES.length * RH); rctx.stroke();
-    if (s % +subEl.value === 0 && s < n) { rctx.fillStyle = '#888'; rctx.textAlign = 'left'; rctx.font = '11px system-ui'; rctx.fillText(String(s / +subEl.value + 1), x + 3, 12); }
-  }
-  rctx.strokeStyle = '#e6e0d4';
-  for (let r = 0; r <= PITCHES.length; r++) { const y = TOP + r * RH; rctx.beginPath(); rctx.moveTo(LEFT, y); rctx.lineTo(LEFT + n * CW, y); rctx.stroke(); }
-  // too-close shading (same-track spacing) computed client-side for feedback
-  const conflicts = spacingConflicts();
-  // notes
-  for (const nt of score.notes) {
-    const r = PITCHES.indexOf(nt.midi); if (r < 0) continue;
-    const s = nt.beat / stepBeats();
-    const x = LEFT + Math.round(s) * CW, y = TOP + r * RH;
-    rctx.fillStyle = conflicts.has(nt) ? '#b8b8b8' : '#3aa06a';
-    rctx.beginPath(); rctx.roundRect(x + 2, y + 2, CW - 4, RH - 4, 4); rctx.fill();
-  }
-  // playhead
-  if (playhead >= 0) { const x = LEFT + playhead * CW; rctx.fillStyle = 'rgba(242,140,40,.35)'; rctx.fillRect(x, TOP, CW, PITCHES.length * RH); }
-}
-function spacingConflicts() {
-  // greedy simulation of the server's assignment, just to grey out notes that will be dropped
-  const bad = new Set();
-  const L = score.length_beats * +$('repeats').value;
-  const last = {};
-  const sorted = score.notes.slice().sort((a, b) => a.beat - b.beat || a.midi - b.midi);
-  for (const n of sorted) {
-    const cands = tracksFor[n.midi]; if (!cands) { bad.add(n); continue; }
-    let ok = false;
-    for (const t of cands.slice().sort((a, b) => (gap(b) - gap(a)))) { if (gap(t) >= GEO.min_pin_arc_mm) { last[t] = n.beat; ok = true; break; } }
-    if (!ok) bad.add(n);
-    function gap(t) { if (last[t] === undefined) return 1e9; return (n.beat - last[t]) / L * 2 * Math.PI * GEO.track_radii[t]; }
-  }
-  return bad;
-}
-roll.addEventListener('click', e => {
-  const rect = roll.getBoundingClientRect();
-  const x = e.clientX - rect.left, y = e.clientY - rect.top;
-  const s = Math.floor((x - LEFT) / CW), r = Math.floor((y - TOP) / RH);
-  if (s < 0 || s >= steps() || r < 0 || r >= PITCHES.length) return;
-  const midi = PITCHES[r], beat = s * stepBeats();
-  const i = score.notes.findIndex(n => n.midi === midi && Math.abs(n.beat - beat) < 1e-6);
-  if (i >= 0) score.notes.splice(i, 1); else { score.notes.push({ beat, midi }); previewNote(midi); }
-  changed();
-});
-
-// ------------------------------------------------------------------ disc view
-const disc = $('disc'), dctx = disc.getContext('2d');
-function drawDisc() {
-  const W = disc.width, c = W / 2, k = (W / 2 - 6) / GEO.disc_radius;
-  dctx.clearRect(0, 0, W, W);
-  dctx.fillStyle = '#4db37a'; dctx.beginPath(); dctx.arc(c, c, GEO.disc_radius * k, 0, 7); dctx.fill();
-  dctx.fillStyle = '#3f9d68'; dctx.beginPath(); dctx.arc(c, c, GEO.label_radius * k, 0, 7); dctx.fill();
-  dctx.fillStyle = '#f4f1ea'; dctx.beginPath(); dctx.arc(c, c, 3.22 * k, 0, 7); dctx.fill();
-  for (let i = 0; i < 4; i++) { dctx.beginPath(); dctx.arc(c + 21.8 * k * Math.cos(i * Math.PI / 2), c - 21.8 * k * Math.sin(i * Math.PI / 2), 1.55 * k, 0, 7); dctx.fill(); }
-  dctx.strokeStyle = '#2b7a50'; dctx.lineWidth = GEO.groove_width * k;
-  for (const r0 of GEO.groove_inner_radii) { dctx.beginPath(); dctx.arc(c, c, (r0 + GEO.groove_width / 2) * k, 0, 7); dctx.stroke(); }
-  const src = assigned || score;
-  const L = src.length_beats;
-  for (const n of src.notes) {
-    const t = n.track ?? tracksFor[n.midi]?.[0]; if (t === undefined) continue;
-    const r = GEO.track_radii[t] * k;
-    const a = 2 * Math.PI * n.beat / L - GEO.head_offset_mm / GEO.track_radii[t];
-    dctx.fillStyle = (t % 2 === 0) ? '#ffe680' : '#ffb347';
-    dctx.beginPath(); dctx.arc(c + r * Math.cos(a), c - r * Math.sin(a), Math.max(1.6, 0.6 * k), 0, 7); dctx.fill();
-  }
-  // tone arm marker at angle 0
-  dctx.strokeStyle = '#f28c28'; dctx.lineWidth = 3; dctx.beginPath(); dctx.moveTo(c + 26 * k, c); dctx.lineTo(c + 61 * k, c); dctx.stroke();
-  if (playhead >= 0) {
-    const a = 2 * Math.PI * (playhead * stepBeats()) / L;
-    dctx.strokeStyle = 'rgba(255,255,255,.8)'; dctx.lineWidth = 1.5;
-    dctx.beginPath(); dctx.moveTo(c + 26 * k * Math.cos(a), c - 26 * k * Math.sin(a)); dctx.lineTo(c + 61 * k * Math.cos(a), c - 61 * k * Math.sin(a)); dctx.stroke();
-  }
-}
-
-// ------------------------------------------------------------------ audio (WebAudio pluck)
-let actx = null, master = null, voices = [];
-function ensureAudio() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); }
-// Notes of a loop playback go through `master` so stop() can silence the ones
-// already handed to the audio engine; single-note previews go straight out.
-function pluck(midi, when, gain = 0.25, out = null) {
-  ensureAudio();
-  out = out || actx.destination;
-  const f = 440 * Math.pow(2, (midi - 69) / 12);
-  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, when); g.gain.exponentialRampToValueAtTime(gain, when + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, when + 1.6);
-  g.connect(out);
-  for (const [ratio, amp, dec] of [[1, 1, 1.5], [6.27, 0.12, 6], [17.55, 0.03, 12]]) {
-    const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = f * ratio;
-    const og = actx.createGain(); og.gain.setValueAtTime(amp, when); og.gain.exponentialRampToValueAtTime(0.0001, when + 2.2 / dec * 1.5);
-    o.connect(og); og.connect(g); o.start(when); o.stop(when + 2.0);
-    if (out !== actx.destination) voices.push(o);
-  }
-}
-function previewNote(m) { pluck(m, actx ? actx.currentTime : 0, 0.2); }
-let playTimer = null, playhead = -1;
-function play() {
-  stop(); ensureAudio();
-  master = actx.createGain(); master.connect(actx.destination);
-  const spr = +$('spr').value, L = score.length_beats * +$('repeats').value;
-  const secPerBeat = spr / L;
-  const t0 = actx.currentTime + 0.05;
-  const notes = score.notes.slice().sort((a, b) => a.beat - b.beat);
-  const schedule = (loopIdx) => {
-    for (const n of notes) pluck(n.midi, t0 + (loopIdx * score.length_beats + n.beat) * secPerBeat, 0.22 * (n.velocity ?? 1), master);
-  };
-  schedule(0);
-  let loopIdx = 0;
-  const started = performance.now();
-  playTimer = setInterval(() => {
-    const el = (performance.now() - started) / 1000;
-    const beat = el / secPerBeat;
-    if (beat >= (loopIdx + 1) * score.length_beats) {
-      if (!$('loopplay').checked) { stop(); return; }
-      loopIdx++; schedule(loopIdx);
-    }
-    playhead = Math.floor((beat % score.length_beats) / stepBeats());
-    drawRoll(); drawDisc();
-  }, 30);
-}
-function stop() {
-  if (playTimer) clearInterval(playTimer); playTimer = null; playhead = -1;
-  if (master) { master.gain.setValueAtTime(0, actx.currentTime); master.disconnect(); master = null; }
-  for (const o of voices) { try { o.stop(); } catch (e) { /* not started yet: it is disconnected anyway */ } }
-  voices = [];
-  drawRoll(); drawDisc();
-}
-$('play').onclick = play; $('stop').onclick = stop;
-
-// ------------------------------------------------------------------ server calls
-function payload() {
-  return { score: { ...score, title: $('title').value, seconds_per_rev: +$('spr').value },
-           repeats: +$('repeats').value, transpose: +$('transpose').value,
-           auto_transpose: $('autotr').checked, snap: $('snap').checked,
-           thickness: +$('thick').value, bottom_inset: $('binset').checked, label: $('label').value };
-}
-async function assign() {
-  const r = await api('/api/assign', { method: 'POST', body: JSON.stringify(payload()) });
-  const d = await r.json();
-  if (d.error) { showReport('Error: ' + d.error, true); return; }
-  assigned = d.score; report = d.report; showReport(reportText(report)); drawDisc();
-}
-function reportText(rep) {
-  const L = [];
-  L.push(`${rep.assigned} pins placed` + (rep.transpose ? ` (transposed ${rep.transpose > 0 ? '+' : ''}${rep.transpose} semitones)` : ''));
-  for (const s of rep.snapped) L.push(`snapped ${s.from} → ${s.to} at beat ${s.beat}`);
-  for (const d of rep.dropped) L.push(`DROPPED ${d.name} at beat ${d.beat}: ${d.why}`);
-  return L.join('\n');
-}
-function showReport(t, bad) { const el = $('report'); el.textContent = t; el.className = bad ? 'bad' : ''; }
-
-let buildBusy = false;
-async function build() {
-  if (buildBusy) return; buildBusy = true; $('build').disabled = true; $('dl').disabled = true;
-  showReport('building…');
-  try {
-    const r = await api('/api/stl', { method: 'POST', body: JSON.stringify(payload()) });
-    if (!r.ok) { const d = await r.json(); throw new Error(d.error || r.statusText); }
-    const rep = JSON.parse(r.headers.get('X-Report') || '{}');
-    stlBlob = await r.blob();
-    showMesh(await stlBlob.arrayBuffer());
-    report = rep; showReport(reportText(rep) + `\nSTL: ${(stlBlob.size / 1e6).toFixed(1)} MB`);
-    $('dl').disabled = false;
-  } catch (e) { showReport('Error: ' + e.message, true); }
-  buildBusy = false; $('build').disabled = false;
-}
-$('build').onclick = build;
-$('dl').onclick = () => { if (stlBlob) saveBlob(stlBlob, ($('title').value || 'record').replace(/\s+/g, '_') + '.stl'); };
-$('dljson').onclick = () => saveBlob(new Blob([JSON.stringify(assigned || payload().score, null, 1)], { type: 'application/json' }), ($('title').value || 'record').replace(/\s+/g, '_') + '.json');
-$('dlwav').onclick = async () => {
-  const r = await api('/api/wav', { method: 'POST', body: JSON.stringify({ ...payload(), loops: 1 }) });
-  saveBlob(await r.blob(), ($('title').value || 'record').replace(/\s+/g, '_') + '.wav');
-};
-function saveBlob(b, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
-
-// ------------------------------------------------------------------ three.js viewer
-const view = $('view');
-const renderer = new THREE.WebGLRenderer({ antialias: true }); renderer.setPixelRatio(devicePixelRatio);
-view.appendChild(renderer.domElement);
-const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9e4d9);
-const cam = new THREE.PerspectiveCamera(35, 1, 1, 1000); cam.position.set(0, -130, 110); cam.up.set(0, 0, 1);
-const ctl = new OrbitControls(cam, renderer.domElement); ctl.target.set(0, 0, 0);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x888877, 0.9));
-const key = new THREE.DirectionalLight(0xffffff, 1.2); key.position.set(60, -80, 120); scene.add(key);
-const fill = new THREE.DirectionalLight(0xffffff, 0.4); fill.position.set(-80, 40, 60); scene.add(fill);
-let meshObj = null;
-function showMesh(buf) {
-  const g = new STLLoader().parse(buf); g.computeVertexNormals();
-  if (meshObj) { scene.remove(meshObj); meshObj.geometry.dispose(); }
-  meshObj = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x4db37a, roughness: 0.55, metalness: 0.05, flatShading: false }));
-  scene.add(meshObj);
-  fitCamera();
-}
-function resize() { const w = view.clientWidth, h = view.clientHeight; if (!w || !h) return; renderer.setSize(w, h); cam.aspect = w / h; cam.updateProjectionMatrix(); fitCamera(); }
-function fitCamera() {
-  // keep the whole disc in view whatever the box's aspect ratio
-  const R = 62, vfov = cam.fov * Math.PI / 180, hfov = 2 * Math.atan(Math.tan(vfov / 2) * cam.aspect);
-  const dist = R / Math.sin(Math.min(vfov, hfov) / 2) * 1.05;
-  const dir = cam.position.clone().sub(ctl.target).normalize();
-  cam.position.copy(ctl.target).add(dir.multiplyScalar(dist));
-}
-new ResizeObserver(resize).observe(view); resize();
-(function loop() { requestAnimationFrame(loop); ctl.update(); renderer.render(scene, cam); })();
-
-// ------------------------------------------------------------------ imports
-$('midi').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = await api('/api/import-midi', { method: 'POST', body: await f.arrayBuffer(), headers: { 'X-Filename': f.name } });
-  const d = await r.json(); if (d.error) return showReport('Error: ' + d.error, true);
-  loadScore(d.score);
-  if (d.suggested_transpose) { $('transpose').value = d.suggested_transpose; showReport(`suggested transpose ${d.suggested_transpose} semitones (${d.unplayable_after} notes still off the comb)`); }
-  changed();
-};
-$('json').onchange = async e => { const f = e.target.files[0]; if (!f) return; loadScore(JSON.parse(await f.text())); changed(); };
-$('photo').onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  showReport('extracting pins from photo…');
-  const r = await api('/api/extract', { method: 'POST', body: await f.arrayBuffer(), headers: { 'X-Filename': f.name, 'X-Quantise': $('pq').value } });
-  const d = await r.json(); if (d.error) return showReport('Error: ' + d.error, true);
-  loadScore(d.score); changed();
-  showReport(`${d.n_pins} pins read from photo` + (d.warnings.length ? '\n' + d.warnings.join('\n') : ''));
-};
-$('fromtext').onclick = async () => {
-  const r = await api('/api/import-text', { method: 'POST', body: JSON.stringify({ text: $('text').value, beats_per_step: stepBeats(), title: $('title').value }) });
-  const d = await r.json(); if (d.error) return showReport('Error: ' + d.error, true);
-  loadScore(d.score); changed();
-};
-function loadScore(s) {
-  score = { title: s.title || 'TUNE', length_beats: s.length_beats, seconds_per_rev: s.seconds_per_rev || 45, notes: s.notes.map(n => ({ beat: n.beat, midi: n.midi, velocity: n.velocity })), meta: s.meta || {} };
-  // pick a grid that shows the notes: smallest subdivision (1..4) that lands every note on a cell
-  let sub = 1; for (const cand of [1, 2, 3, 4]) { if (score.notes.every(n => Math.abs(n.beat * cand - Math.round(n.beat * cand)) < 1e-6)) { sub = cand; break; } sub = 4; }
-  subEl.value = String(sub); beatsEl.value = Math.ceil(score.length_beats);
-  $('title').value = score.title; $('label').value = score.title.slice(0, 14).toUpperCase(); $('spr').value = score.seconds_per_rev;
-}
-
-// ------------------------------------------------------------------ edits
-$('clear').onclick = () => { score.notes = []; changed(); };
-$('shiftl').onclick = () => { const s = stepBeats(); score.notes.forEach(n => n.beat = ((n.beat - s) % score.length_beats + score.length_beats) % score.length_beats); changed(); };
-$('shiftr').onclick = () => { const s = stepBeats(); score.notes.forEach(n => n.beat = (n.beat + s) % score.length_beats); changed(); };
-function transposeStep(dir) {
-  const ps = GEO.pitch_set;
-  score.notes.forEach(n => { const i = ps.indexOf(n.midi); if (i >= 0 && ps[i + dir] !== undefined) n.midi = ps[i + dir]; });
-  changed();
-}
-$('transdown').onclick = () => transposeStep(-1); $('transup').onclick = () => transposeStep(1);
-for (const id of ['beats', 'sub', 'repeats', 'transpose', 'autotr', 'snap', 'spr']) $(id).addEventListener('change', () => { score.length_beats = +beatsEl.value; changed(); });
-$('title').addEventListener('input', () => { $('label').value = $('title').value.slice(0, 14).toUpperCase(); });
-
-let assignTimer = null;
-function changed() {
-  score.length_beats = +beatsEl.value;
-  score.notes = score.notes.filter(n => n.beat < score.length_beats - 1e-9);
-  assigned = null; stlBlob = null; $('dl').disabled = true;
-  drawRoll(); drawDisc();
-  clearTimeout(assignTimer); assignTimer = setTimeout(assign, 250);
-}
-
-// a score handed over from the scanner, or a starter loop so the page is not empty
-let handoff = null;
-try { handoff = JSON.parse(localStorage.getItem('fpmb.handoff') || 'null'); localStorage.removeItem('fpmb.handoff'); } catch (e) {}
-if (handoff && handoff.notes) { loadScore(handoff); changed(); }
-else { $('text').value = 'C5 Eb5 G5 C6 . G5 Eb5 C5 | Ab4 C5 Eb5 Ab5 . Eb5 C5 Ab4'; $('fromtext').click(); }
-// demo mode (used for the home-page screenshots): build before the page reports 'loaded'
-if (new URLSearchParams(location.search).has('demo')) { await new Promise(r => setTimeout(r, 600)); await build(); await new Promise(r => setTimeout(r, 500)); }
-window.__demoDone = true;
-</script>
-<script>
-(function () { // live star count from the GitHub API (public, no token); the link works without it
-  fetch('https://api.github.com/repos/shihanqu/fisher-price-record-studio').then(r => r.ok ? r.json() : null)
-    .then(d => { const el = document.getElementById('gh-stars'); if (!el) return; if (d && typeof d.stargazers_count === 'number') el.innerHTML = '&#9733; ' + d.stargazers_count.toLocaleString(); else el.innerHTML = '&#9733;'; })
-    .catch(() => { const el = document.getElementById('gh-stars'); if (el) el.innerHTML = '&#9733;'; });
-})();
-</script>
+<script type="module" src="js/designer-app.js"></script>
 </body>
 </html>

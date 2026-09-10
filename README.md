@@ -1,67 +1,90 @@
 # Fisher-Price Record Studio
 
-**Try it: https://shihanqu.github.io/fisher-price-record-studio/** (a static demo, see below)
+**Try it: https://shihanqu.github.io/fisher-price-record-studio/**
 
 The 1971 Fisher-Price #995 Music Box Record Player plays little plastic records:
 raised pins on eleven concentric grooves pluck a 22-tine comb as the disc turns.
-This project does two things with them. Photograph a record and it reads
-the tune back. Give it a short loop of music and it produces a record you can
-3D print and play on the toy.
+This project does two things with them. Photograph a record and it reads the
+tune back. Give it a short loop of music and it produces a record you can 3D
+print and play on the toy.
+
+The whole app runs in your browser. The site is plain static files on GitHub
+Pages, photos are read on the page and never uploaded, and the STL is built on
+your own machine.
 
 ## What it does
 
 | Note Scanner | Record Designer |
 | --- | --- |
-| ![Note Scanner: a photo of a record straightened, every pin circled, and the notes it plays](webapp/static/scanner.png) | ![Record Designer: piano roll on the left, 3D preview of the printable record on the right](webapp/static/designer.png) |
-| Drop in a photo of a record. It gets straightened, every pin on the 22 tracks is found, and the tune plays back. Export as JSON, MIDI or WAV. | Draw a loop on the piano roll or import a MIDI file. It becomes pins on a real record, shown in 3D and downloadable as a print-ready STL. |
+| ![Note Scanner: a photo of a record straightened, every pin circled, and the notes it plays](docs/img/scanner.png) | ![Record Designer: piano roll on the left, 3D preview of the printable record on the right](docs/img/designer.png) |
+| Choose a photo of a record. It gets straightened, every pin on the 22 tracks is found, and the tune plays back. Export as JSON, MIDI or WAV, or send it to the designer. | Draw a loop on the piano roll or import a MIDI file. It becomes pins on a real record, shown in 3D as you edit and downloadable as a print-ready STL. |
 
 | The original *Edelweiss* record, as scanned | The same tune re-created as an STL |
 | --- | --- |
 | ![Detected pins on the Edelweiss record](output/edelweiss_debug/02_rectified_pins.jpg) | ![Top view of the regenerated STL](output/edelweiss_reprint_render.png) |
 
-## About the static demo
+## How it runs in a browser
 
-The link at the top is a GitHub Pages site, so there is no server behind it.
-It shows the pre-computed scan of the sample photo and lets you draw loops,
-hear them and see the starter loop in 3D. It cannot scan a photo you upload,
-build an STL from your own loop, or export MIDI and WAV, because those steps
-run in Python (OpenCV for the image work, manifold3d for the mesh). Every page
-of the demo says so in a banner. For the real thing, run it locally:
+The web app in `docs/` is a JavaScript port of the Python library in `fpmb/`.
+The scanner does its image processing in a Web Worker so the page stays
+responsive. A scan of the sample photo takes about a second and a half in
+Chrome on the Mac this was built on. Big phone photos are scaled down to 3000
+pixels on the long side first, which costs nothing: the reference photo gives
+the same 157 pins even at 1600 pixels.
+
+The record is built with the WebAssembly build of manifold, the same CSG
+library the Python side uses, so the STL from the page has the same triangles,
+volume and genus as the one from the command line. three.js draws the preview.
+Both libraries are copied into `docs/vendor`, so nothing is fetched from a CDN
+at run time. `tests/test_js_parity.py` checks that the port and the Python
+code still agree (see Tests).
+
+To run the site on your own machine, serve `docs/` with any static file
+server. Opening `index.html` straight from disk won't work, because browsers
+refuse ES modules and workers on `file://` pages.
 
 ```bash
-python3 -m venv .venv && .venv/bin/pip install numpy scipy pillow opencv-python-headless mido manifold3d trimesh
+python3 -m http.server 8000 -d docs
 ```
 
-```bash
-.venv/bin/python webapp/server.py
-```
-
-That opens a home page linking to both apps. `webapp/server.py scanner` or
-`webapp/server.py designer` opens one of them directly.
+Then open http://localhost:8000.
 
 ## Layout
 
 ```
-fpmb/                 shared library
+docs/                 the web app, served as-is by GitHub Pages
+  index.html          home page
+  scanner.html        Note Scanner
+  designer.html       Record Designer
+  js/                 browser code: extract.js is the scanner (with imgproc.js
+                      and signal.js), mesh.js builds the record, plus score,
+                      synth, midi, geometry and the page scripts
+  vendor/             three.js 0.160.0 and manifold 3.5.3, with their licences
+  samples/            the photo behind "Try the sample photo"
+  img/                screenshots used here and on the home page
+fpmb/                 the Python library the web app was ported from
   geometry.py         disc, groove and pin dimensions; the comb's 22 pitches; rotation
   score.py            note-event model (JSON), text and MIDI import, track assignment
   extract.py          photo -> pins -> score
   synth.py            score -> WAV / MIDI
-  mesh.py             score -> watertight STL (manifold3d CSG)
+  mesh.py             score -> watertight STL (manifold3d)
   strokefont.py       small stroke font for the embossed label
 extract_record.py     CLI: photo -> .json / .wav / .mid  (with --play and --debug)
 design_disc.py        CLI: .mid / .json / text loop -> .stl / .json / .wav
 compare_extractions.py  cross-checks two photos of the same record
-webapp/               the two web apps and their server
-  build_static.py     builds the static demo into docs/
-  shots.py            re-takes the home-page screenshots with headless Chrome
-docs/                 the static demo, published with GitHub Pages
-tests/test_roundtrip.py  renders fake photos of random records and re-reads them
+tests/                round-trip test, JS/Python parity test and its Node runner
+tools/shots.py        re-takes the screenshots with headless Chrome
 data/                 reference photos and audio (the 340 MB source video is not in the repo)
-output/               results
+output/               example results
 ```
 
 ## Reading a record from a photo
+
+In the browser, open the scanner and drop a photo onto it. Any angle works as
+long as the whole grooved side is in view. Hands and the tone arm are masked
+out and reported as missing coverage.
+
+The command-line version does the same thing:
 
 ```bash
 .venv/bin/python extract_record.py data/edelweiss_record.jpg --title Edelweiss --play --debug
@@ -84,8 +107,7 @@ of the 22 pin tracks a signal is built along the angle that reads 1 at wall
 height and 0 on the groove floor. A pin has to be at wall height from the wall
 face to its tip, which rejects bleed from the pin on the far side of the same
 groove. Where perspective shows a lit wall face that outshines any pin top, a
-pin is also accepted when it stands well clear of the floor's own noise. Hands
-and the tone arm are masked out and reported as missing coverage.
+pin is also accepted when it stands well clear of the floor's own noise.
 
 The photo in `data/` yields 157 pins. Running the same code on a frame of the
 video, where the record sits on the player with the arm hiding a quarter of it,
@@ -95,6 +117,10 @@ Edelweiss, which is a good sign that pitch mapping, track sides and time
 direction are all right.
 
 ## Designing a record
+
+In the browser, click notes onto the piano roll, type a loop in the text box,
+or import a MIDI file, a score JSON or a photo of a record. The 3D preview
+rebuilds as you edit, and Download STL saves exactly what the preview shows.
 
 From the command line:
 
@@ -110,9 +136,9 @@ From the command line:
 .venv/bin/python design_disc.py output/edelweiss.json --out output/edelweiss_reprint
 ```
 
-The last one reprints the original record from its scan. In the web app the
-preview is produced by the same Python code, so what you see is the exact mesh
-you download.
+The last one reprints the original record from its scan. In the text notation
+each token is one step: `.` is a rest, `C5+Eb5` is a chord, `|` is a bar line
+and is ignored, and a token starting with `#` comments out the rest of the line.
 
 A few rules the designer follows. The comb has 16 pitches, Eb4 Ab4 Bb4 C5 Eb5
 F5 G5 Ab5 Bb5 C6 Db6 Eb6 F6 G6 Ab6 Bb6, which is Ab major. Anything else is
@@ -140,14 +166,35 @@ the tone arm is applied per track.
 
 ## Tests
 
+The Python tools need a virtual environment:
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install numpy scipy pillow opencv-python-headless mido manifold3d trimesh websocket-client
+```
+
 ```bash
 .venv/bin/python tests/test_roundtrip.py
+```
+
+```bash
+.venv/bin/python tests/test_js_parity.py
 ```
 
 ```bash
 .venv/bin/python compare_extractions.py data/edelweiss_record.jpg data/edelweiss_on_player_t30.jpg
 ```
 
-The first renders fake photos of random records at random tilts and checks
-every pin comes back with none invented. The second lines up two photos of the
-same record and lists the pins they disagree on.
+The round-trip test renders fake photos of random records at random tilts and
+checks that every pin comes back with none invented.
+
+The parity test runs the browser code under Node (version 18 or later) and
+compares it with the Python library. The geometry constants must be identical,
+and the stand-ins for the scipy filters and peak finder must match scipy on
+random data. Text parsing, track assignment and quantising must give the same
+scores, and the MIDI files must be byte-for-byte the same as mido's. The record
+mesh must have the same triangle count, volume and genus as manifold3d's. The
+scanner must find the same 157 pins as the Python extractor on the Edelweiss
+photo, and every pin on the synthetic photos.
+
+The last command lines up two photos of the same record and lists the pins
+they disagree on.
