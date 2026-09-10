@@ -100,14 +100,15 @@ function drawOverlay() {
 function drawSweep() {
   sctx.clearRect(0, 0, sweep.width, sweep.height);
   if (!result || !score || playhead < 0) return;
-  const o = result.overlay, c = o.width / 2, k = o.pxPerMm;
-  // the arm is reading the note at `playhead`, which sits at start + 360 * beat / length
-  const a = (((score.meta.start_angle_deg || 0) + (360 * playhead) / score.length_beats) * Math.PI) / 180;
+  const o = result.overlay, c = o.width / 2;
+  // The arm is reading the notes at `playhead`. Their pins lie where the comb
+  // touches the record, 2 mm to one side of the arm's radius (geometry.armLine),
+  // and a quantised score also carries the phase of its grid.
+  const theta = (score.meta.start_angle_deg || 0) + (score.meta.quantise_phase_deg || 0) + (360 * playhead) / score.length_beats;
   sctx.strokeStyle = 'rgba(255,255,255,.95)';
   sctx.lineWidth = Math.max(2, o.width / 400);
   sctx.beginPath();
-  sctx.moveTo(c + 26 * k * Math.cos(a), c - 26 * k * Math.sin(a));
-  sctx.lineTo(c + 61 * k * Math.cos(a), c - 61 * k * Math.sin(a));
+  G.armLine(theta, c, c, o.pxPerMm).forEach(([x, y], i) => (i ? sctx.lineTo(x, y) : sctx.moveTo(x, y)));
   sctx.stroke();
 }
 

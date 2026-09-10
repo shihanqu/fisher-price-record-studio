@@ -110,9 +110,23 @@ export class Player {
 
   get playing() { return this.timer !== null; }
 
+  /** Audio-clock time of the sound leaving the speakers right now (seconds). */
+  heardTime() {
+    const ctx = this.ctx;
+    if (ctx.state === 'running' && typeof ctx.getOutputTimestamp === 'function') {
+      const ts = ctx.getOutputTimestamp();
+      if (ts && ts.contextTime > 0 && ts.performanceTime > 0) {
+        return Math.min(ctx.currentTime, ts.contextTime + Math.max(0, (performance.now() - ts.performanceTime) / 1000));
+      }
+    }
+    return ctx.currentTime - (ctx.outputLatency || ctx.baseLatency || 0);
+  }
+
   /**
    * Play `notes` ({beat, midi, velocity}) over a loop of `loopBeats`.
-   * onTick(beat) fires about 30 times a second; keepLooping() is asked at the end of each pass.
+   * onTick(beat) fires about 30 times a second with the beat being heard (it
+   * follows the audio clock, output latency included, so drawings keep in step
+   * with the sound). keepLooping() is asked as each pass ends.
    */
   play({ notes, loopBeats, secPerBeat, keepLooping = () => true, onTick = () => {}, onStop = () => {} }) {
     this.stop();
@@ -120,20 +134,26 @@ export class Player {
     this.onStop = onStop;
     this.master = ctx.createGain();
     this.master.connect(ctx.destination);
-    const t0 = ctx.currentTime + 0.05;
     const sorted = notes.slice().sort((a, b) => a.beat - b.beat);
-    const schedule = (k) => { for (const n of sorted) this.pluck(n.midi, t0 + (k * loopBeats + n.beat) * secPerBeat, 0.22 * Math.min(1, n.velocity ?? 1), this.master); };
-    schedule(0);
-    let pass = 0;
-    const started = performance.now();
-    this.timer = setInterval(() => {
-      const beat = (performance.now() - started) / 1000 / secPerBeat;
-      if (beat >= (pass + 1) * loopBeats) {
-        if (!keepLooping()) { this.stop(); return; }
-        schedule(++pass);
-      }
-      onTick(beat % loopBeats);
-    }, 30);
+    const passSec = loopBeats * secPerBeat;
+    const t0 = ctx.currentTime + 0.1;
+    let queued = 0, heardPass = 0;
+    const queuePass = () => {
+      const start = t0 + queued * passSec;
+      for (const n of sorted) this.pluck(n.midi, start + n.beat * secPerBeat, 0.22 * Math.min(1, n.velocity ?? 1), this.master);
+      queued++;
+    };
+    queuePass();
+    const tick = () => {
+      if (ctx.currentTime + 1 >= t0 + queued * passSec && keepLooping()) queuePass();   // keep about a second queued
+      const t = this.heardTime() - t0;
+      const pass = Math.floor(Math.max(0, t) / passSec);
+      if (pass >= queued || (pass > heardPass && !keepLooping())) { this.stop(); return; }
+      heardPass = pass;
+      onTick(t <= 0 ? 0 : (t / secPerBeat) % loopBeats);
+    };
+    this.timer = setInterval(tick, 30);
+    tick();
   }
 
   stop() {

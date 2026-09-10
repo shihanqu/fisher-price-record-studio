@@ -177,6 +177,10 @@ for (name, _, need), r, pp in zip(photos, res, pys):
     check(f"scanner on {name}: same pins as Python", m >= need * max(len(pp), len(r["pins"])),
           f"python {len(pp)}, browser {len(r['pins'])}, matched {m}, {r['ms'] / 1000:.1f} s")
 
+sw = run_js([{**jobs[0], "op": "sweep"}])[0]
+check("play-along line crosses each pin exactly when its note sounds", sw["raw"] < 1e-6 and sw["quantised"] <= sw["halfStep"] + 1e-6,
+      f"worst miss {sw['raw']:.1e} deg raw, {sw['quantised']:.2f} deg quantised to 100 beats")
+
 jobs, truths = [], []
 for seed in range(4):
     r2 = np.random.default_rng(seed)

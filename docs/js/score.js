@@ -174,6 +174,7 @@ export function quantise(sc, beatsPerRev) {
   const ph = best[1];
   const out = makeScore({ length_beats: beatsPerRev, title: sc.title, seconds_per_rev: sc.seconds_per_rev, meta: { ...sc.meta } });
   out.meta.quantise_rms_deg = a.length ? Math.sqrt(a.reduce((s, x) => s + wrapErr(x, ph) ** 2, 0) / a.length) : 0;
+  out.meta.quantise_phase_deg = ph;      // beat b now sits at start_angle_deg + phase + b * step
   sc.notes.forEach((n, i) => out.notes.push(makeNote(pymod(pyround((a[i] - ph) / step), beatsPerRev), n.midi, n.track, n.velocity)));
   out.notes.sort(noteOrder);
   return out;

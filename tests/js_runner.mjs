@@ -57,6 +57,27 @@ for (const job of jobs) {
       out.push({ pins: r.pins, warnings: r.warnings, fit: r.grooveFit, coverage: r.coverage, ms: performance.now() - t0 });
       break;
     }
+    case 'sweep': {
+      // For every note, where the arm line crosses the note's track at the moment
+      // the note sounds, compared with the nearest detected pin on that track.
+      const data = new Uint8ClampedArray(fs.readFileSync(job.rgba));
+      const r = X.extractFromRGBA({ data, width: job.w, height: job.h });
+      const worst = (sc) => {
+        let w = 0;
+        for (const n of sc.notes) {
+          const theta = (sc.meta.start_angle_deg || 0) + (sc.meta.quantise_phase_deg || 0) + (360 * n.beat) / sc.length_beats;
+          const rad = G.trackRadius(n.track);
+          const [[x, y]] = G.armLine(theta, 0, 0, 1, rad, rad);
+          const hit = Math.atan2(-y, x) * G.DEG;
+          let best = 1e9;
+          for (const [t, a] of r.pins) if (t === n.track) best = Math.min(best, Math.abs(((hit - a + 540) % 360) - 180));
+          w = Math.max(w, best);
+        }
+        return w;
+      };
+      out.push({ raw: worst(r.score), quantised: worst(S.quantise(r.score, 100)), halfStep: 1.8 });
+      break;
+    }
     case 'wav': out.push({ bytes: SY.renderWav(S.fromDict(job.score), { secondsPerRev: job.spr }).byteLength }); break;
     default: throw new Error('unknown op ' + job.op);
   }

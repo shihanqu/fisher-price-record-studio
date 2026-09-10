@@ -102,12 +102,13 @@ function drawDisc() {
     dctx.fillStyle = t % 2 === 0 ? '#ffe680' : '#ffb347';
     dctx.beginPath(); dctx.arc(c + r * Math.cos(a), c - r * Math.sin(a), Math.max(1.6, 0.6 * k), 0, 7); dctx.fill();
   }
+  // the comb (orange) touches the pins of beat 0; see geometry.armLine
+  const stroke = (pts) => { dctx.beginPath(); pts.forEach(([x, y], i) => (i ? dctx.lineTo(x, y) : dctx.moveTo(x, y))); dctx.stroke(); };
   dctx.strokeStyle = '#f28c28'; dctx.lineWidth = 3;
-  dctx.beginPath(); dctx.moveTo(c + 26 * k, c); dctx.lineTo(c + 61 * k, c); dctx.stroke();
+  stroke(G.armLine(0, c, c, k));
   if (playhead >= 0) {
-    const a = (2 * Math.PI * (playhead * stepBeats())) / L;
     dctx.strokeStyle = 'rgba(255,255,255,.8)'; dctx.lineWidth = 1.5;
-    dctx.beginPath(); dctx.moveTo(c + 26 * k * Math.cos(a), c - 26 * k * Math.sin(a)); dctx.lineTo(c + 61 * k * Math.cos(a), c - 61 * k * Math.sin(a)); dctx.stroke();
+    stroke(G.armLine((360 * playhead * stepBeats()) / L, c, c, k));
   }
 }
 

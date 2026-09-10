@@ -65,3 +65,22 @@ export function midiName(m, flats = true) {
   return (flats ? FLAT_NAMES : SHARP_NAMES)[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
 }
 export const midiFreq = (m) => 440 * 2 ** ((m - 69) / 12);
+
+/**
+ * Where the comb touches the record while the arm reads musical angle
+ * `thetaDeg`. The tines sit HEAD_OFFSET_MM to one side of the arm's radial
+ * line, so the pins that sound together lie on a line parallel to the radius
+ * rather than on it (a pin for time T is placed at T - HEAD_OFFSET_MM / r).
+ * Returns image points [x, y] (y pointing down) for a disc centred at
+ * (cx, cy) drawn at pxPerMm, from radius r0 to r1 in mm.
+ */
+export function armLine(thetaDeg, cx, cy, pxPerMm, r0 = 26, r1 = 61, stepMm = 1) {
+  const pts = [];
+  const n = Math.max(1, Math.round((r1 - r0) / stepMm));
+  for (let i = 0; i <= n; i++) {
+    const r = r0 + ((r1 - r0) * i) / n;
+    const a = thetaDeg / DEG - HEAD_OFFSET_MM / r;
+    pts.push([cx + r * pxPerMm * Math.cos(a), cy - r * pxPerMm * Math.sin(a)]);
+  }
+  return pts;
+}

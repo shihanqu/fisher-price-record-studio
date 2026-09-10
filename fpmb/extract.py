@@ -465,6 +465,7 @@ def quantise(score: Score, beats_per_rev: int) -> Score:
     ph = best[1]
     out = Score(float(beats_per_rev), [], score.title, score.seconds_per_rev, dict(score.meta))
     out.meta["quantise_rms_deg"] = float(math.sqrt(np.mean(((a - ph + step / 2) % step - step / 2) ** 2)))
+    out.meta["quantise_phase_deg"] = float(ph)    # beat b now sits at start_angle_deg + phase + b * step
     for n, ang in zip(score.notes, a):
         b = int(round((ang - ph) / step)) % beats_per_rev
         out.notes.append(Note(float(b), n.midi, n.track, n.velocity))
